@@ -1,7 +1,7 @@
 name: Build pull request
 on:
   pull_request:
-    types: [opened, synchronize]
+    types: [opened, synchronize, reopened]
 
 env:
 
@@ -34,10 +34,18 @@ jobs:
           check-latest: true
           cache-dependency-path: |
             go.sum
-      # Build the Golang application
+      # Test the Golang application
+      - name: Test Golang application
+        run: |
+          git config --global url."https://${{ secrets.USERNAME }}:${{ secrets.TOKEN }}@github.com/".insteadOf "https://github.com/"
+          go fmt $(go list ./... | grep -v /vendor/)
+          go vet $(go list ./... | grep -v /vendor/)
+          go test -race $(go list ./... | grep -v /vendor/)
+      # Build the Golang application to the dist folder
       - name: Build Golang application
         run: |
-          go build
+          git config --global url."https://${{ secrets.USERNAME }}:${{ secrets.TOKEN }}@github.com/".insteadOf "https://github.com/"
+          go build -o main
       - name: Log in to GitHub Container Registry
         uses: docker/login-action@v2
         with:
@@ -47,5 +55,6 @@ jobs:
       - name: Run Build
         run: |
           docker build -t ${{matrix.architecture}} \
+          --build-arg project=${{ env.PROJECT }} \
           --build-arg github_username=${{ secrets.USERNAME }} \
           --build-arg github_token=${{ secrets.TOKEN }} .
