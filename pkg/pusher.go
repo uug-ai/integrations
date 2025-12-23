@@ -1,10 +1,9 @@
-package channels
+package pkg
 
 import (
 	"fmt"
 
 	push "github.com/pusher/pusher-http-go"
-	message "github.com/uug-ai/hub-pipeline-notification/message"
 )
 
 // Following message is send to pusher, structure may be modified,
@@ -49,7 +48,7 @@ type Pusher struct {
 	Channel string `json:"channel,omitempty"`
 }
 
-func (pusher Pusher) SendNotification(message message.Message) bool {
+func (pusher Pusher) SendNotification(message Message) bool {
 
 	// instantiate a client
 	client := push.Client{
@@ -75,7 +74,7 @@ func (pusher Pusher) SendNotification(message message.Message) bool {
 	return true
 }
 
-func (pusher Pusher) Send(message message.Message) bool {
+func (pusher Pusher) Send(message Message) bool {
 
 	// instantiate a client
 	client := push.Client{

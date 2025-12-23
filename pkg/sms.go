@@ -1,8 +1,7 @@
-package channels
+package pkg
 
 import (
 	"github.com/sfreiberg/gotwilio"
-	message "github.com/uug-ai/hub-pipeline-notification/message"
 )
 
 type Sms struct {
@@ -12,7 +11,7 @@ type Sms struct {
 	To         string `json:"to,omitempty"`
 }
 
-func (sms Sms) Send(m message.Message) bool {
+func (sms Sms) Send(m Message) bool {
 
 	accountSid := sms.AccountSID
 	authToken := sms.AuthToken

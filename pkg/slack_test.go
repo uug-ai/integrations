@@ -1,15 +1,12 @@
-package test
+package pkg
 
 import (
 	"testing"
 	"time"
-
-	channels "github.com/uug-ai/hub-pipeline-notification/channels"
-	message "github.com/uug-ai/hub-pipeline-notification/message"
 )
 
 func TestSlackChannel(t *testing.T) {
-	m := message.Message{}
+	m := Message{}
 	m.Type = "message"
 	m.Timestamp = int64(time.Now().Unix())
 	m.Title = "Alert: Kerberos Hub detected something."
@@ -18,8 +15,8 @@ func TestSlackChannel(t *testing.T) {
 	m.UserId = "23235235235235"
 	m.SequenceId = "5a72d0f6e17699d18adb5e17"
 	m.Unread = true
-	m.Media = []message.Media{}
-	m.Media = append(m.Media, message.Media{
+	m.Media = []Media{}
+	m.Media = append(m.Media, Media{
 		Timestamp:    1670618365,
 		Type:         "video",
 		Url:          "",
@@ -30,7 +27,7 @@ func TestSlackChannel(t *testing.T) {
 	// ....
 
 	// Send message to all channels.
-	slack := channels.Slack{
+	slack := Slack{
 		Hook:     "https://hooks.slack.com/services/xxxx/xxx/xxxx",
 		Username: "UUG.AI Bot",
 	}

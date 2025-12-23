@@ -1,7 +1,6 @@
-package channels
+package pkg
 
 import (
-	message "github.com/uug-ai/hub-pipeline-notification/message"
 	pushb "github.com/xconstruct/go-pushbullet"
 )
 
@@ -9,7 +8,7 @@ type Pushbullet struct {
 	ApiKey string `json:"api_key,omitempty"`
 }
 
-func (pushbullet Pushbullet) SendLink(message message.Message) bool {
+func (pushbullet Pushbullet) SendLink(message Message) bool {
 
 	// Instantiate a client
 	pb := pushb.New(pushbullet.ApiKey)
@@ -26,7 +25,7 @@ func (pushbullet Pushbullet) SendLink(message message.Message) bool {
 	return true
 }
 
-func (pushbullet Pushbullet) SendMessage(message message.Message) bool {
+func (pushbullet Pushbullet) SendMessage(message Message) bool {
 
 	// Instantiate a client
 	pb := pushb.New(pushbullet.ApiKey)

@@ -1,4 +1,4 @@
-package channels
+package pkg
 
 import (
 	"crypto/tls"
@@ -7,8 +7,6 @@ import (
 	"strings"
 	"time"
 
-	message "github.com/uug-ai/hub-pipeline-notification/message"
-	templates "github.com/uug-ai/hub-pipeline-notification/templates"
 	"gopkg.in/gomail.v2"
 )
 
@@ -22,7 +20,7 @@ type SMTP struct {
 	TemplateId string `json:"template_id,omitempty"`
 }
 
-func (smtp SMTP) Send(message message.Message) error {
+func (smtp SMTP) Send(message Message, body string, textBody string) error {
 	port, _ := strconv.Atoi(smtp.Port)
 	d := gomail.NewDialer(smtp.Server, port, smtp.Username, smtp.Password)
 	d.TLSConfig = &tls.Config{InsecureSkipVerify: true}
@@ -34,10 +32,10 @@ func (smtp SMTP) Send(message message.Message) error {
 	timeNow := time.Now().Unix()
 	m.SetHeader("Message-Id", "<"+strconv.FormatInt(timeNow, 10)+"@kerberos.io>")
 
-	textBody := templates.GetTextTemplate(smtp.TemplateId)
+	//textBody := templates.GetTextTemplate(smtp.TemplateId)
 	m.SetBody("text/plain", ReplaceValues(textBody, message))
 
-	body := templates.GetTemplate(smtp.TemplateId)
+	//body := templates.GetTemplate(smtp.TemplateId)
 	m.AddAlternative("text/html", ReplaceValues(body, message))
 
 	err := d.DialAndSend(m)
@@ -70,7 +68,7 @@ func (smtp SMTP) Send(message message.Message) error {
 // - {{numberOfMedia}}: number of media attached to the message
 // - {{dataUsage}}: data usage of the message
 
-func ReplaceValues(body string, message message.Message) string {
+func ReplaceValues(body string, message Message) string {
 
 	body = strings.ReplaceAll(body, "{{tab1_title}}", "")
 	body = strings.ReplaceAll(body, "{{tab2_title}}", "")

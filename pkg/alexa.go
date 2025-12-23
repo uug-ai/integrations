@@ -1,18 +1,16 @@
-package channels
+package pkg
 
 import (
 	"bytes"
 	"encoding/json"
 	"net/http"
-
-	message "github.com/uug-ai/hub-pipeline-notification/message"
 )
 
 type Alexa struct {
 	AccessCode string `json:"accesscode,omitempty"`
 }
 
-func (alexa Alexa) Send(message message.Message) bool {
+func (alexa Alexa) Send(message Message) bool {
 
 	url := "https://api.notifymyecho.com/v1/NotifyMe"
 	notification := message.Body

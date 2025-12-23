@@ -1,10 +1,9 @@
-package channels
+package pkg
 
 import (
 	"fmt"
 
 	pusho "github.com/gregdel/pushover"
-	message "github.com/uug-ai/hub-pipeline-notification/message"
 )
 
 type Pushover struct {
@@ -12,7 +11,7 @@ type Pushover struct {
 	SendTo string `json:"send_to,omitempty"`
 }
 
-func (pushover Pushover) Send(m message.Message) bool {
+func (pushover Pushover) Send(m Message) bool {
 
 	// Create a new pushover app with a token
 	app := pusho.New(pushover.ApiKey)

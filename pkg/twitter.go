@@ -1,14 +1,13 @@
-package channels
+package pkg
 
 import (
 	tw "github.com/dghubble/go-twitter/twitter"
 	"github.com/dghubble/oauth1"
-	message "github.com/uug-ai/hub-pipeline-notification/message"
 )
 
 type Twitter struct{}
 
-func (twitter Twitter) SendNotification(message message.Message) bool {
+func (twitter Twitter) SendNotification(message Message) bool {
 
 	// Twitter client
 	config := oauth1.NewConfig("consumerKey", "pTMuNmxrTlG7IlmqXEzeqjfx7nUFPiwUXsXNUhNOWlYkHxLjXz")

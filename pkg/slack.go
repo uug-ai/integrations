@@ -1,8 +1,7 @@
-package channels
+package pkg
 
 import (
 	"github.com/slack-go/slack"
-	message "github.com/uug-ai/hub-pipeline-notification/message"
 )
 
 type Slack struct {
@@ -12,7 +11,7 @@ type Slack struct {
 	Username string `json:"username,omitempty"`
 }
 
-func (s Slack) Send(message message.Message) error {
+func (s Slack) Send(message Message) error {
 
 	//token := s.Token
 	//channelName := s.Channel

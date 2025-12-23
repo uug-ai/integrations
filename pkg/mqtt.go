@@ -1,11 +1,10 @@
-package channels
+package pkg
 
 import (
 	"fmt"
 	"time"
 
 	mqttPaho "github.com/eclipse/paho.mqtt.golang"
-	message "github.com/uug-ai/hub-pipeline-notification/message"
 )
 
 type MQTT struct {
@@ -14,7 +13,7 @@ type MQTT struct {
 	Password string
 }
 
-func (mqtt MQTT) SendNotification(message message.Message) bool {
+func (mqtt MQTT) SendNotification(message Message) bool {
 
 	MQTTURI := mqtt.URI
 	MQTTUsername := mqtt.Username

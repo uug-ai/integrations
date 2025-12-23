@@ -1,14 +1,11 @@
-package test
+package pkg
 
 import (
 	"time"
-
-	channels "github.com/uug-ai/hub-pipeline-notification/channels"
-	message "github.com/uug-ai/hub-pipeline-notification/message"
 )
 
-func main() {
-	m := message.Message{}
+func TestPushover() {
+	m := Message{}
 	m.Type = "message"
 	m.Timestamp = int64(time.Now().Unix())
 	m.Title = "Something happened"
@@ -22,7 +19,7 @@ func main() {
 	// ....
 
 	// Send message to all channels.
-	pushover := channels.Pushover{
+	pushover := Pushover{
 		ApiKey: "xxx",
 		SendTo: "xxx",
 	}

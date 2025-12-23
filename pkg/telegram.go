@@ -1,11 +1,9 @@
-package channels
+package pkg
 
 import (
 	"strings"
 
 	tgbotapi "gopkg.in/telegram-bot-api.v4"
-
-	message "github.com/uug-ai/hub-pipeline-notification/message"
 )
 
 type Telegram struct {
@@ -13,7 +11,7 @@ type Telegram struct {
 	Channel string `json:"channel,omitempty"`
 }
 
-func (t Telegram) Send(message message.Message) bool {
+func (t Telegram) Send(message Message) bool {
 
 	channelName := t.Channel //"c1375189391_8694429167782276799"
 	token := t.Token         //"592498002:AAHYGK-EEUXV3oFtf3mVUJEPWxCYfNkXdC0"

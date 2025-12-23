@@ -1,14 +1,11 @@
-package test
+package pkg
 
 import (
 	"time"
-
-	channels "github.com/uug-ai/hub-pipeline-notification/channels"
-	message "github.com/uug-ai/hub-pipeline-notification/message"
 )
 
-func main() {
-	m := message.Message{}
+func TestSendgrid() {
+	m := Message{}
 	m.Type = "message"
 	m.Timestamp = int64(time.Now().Unix())
 	m.Title = "Your user has been disabled."
@@ -21,7 +18,7 @@ func main() {
 	m.Unread = true
 
 	// Send message to all channels.
-	sendgrid := channels.Sendgrid{
+	sendgrid := Sendgrid{
 		TemplateId: "c4ed7742-8742-4f6d-bfef-b3e42a62ebca",
 		EmailFrom:  "xxx@xxx.io",
 		EmailTo:    "xxx@xxx.io",

@@ -1,9 +1,8 @@
-package channels
+package pkg
 
 import (
 	sg "github.com/sendgrid/sendgrid-go"
 	mail "github.com/sendgrid/sendgrid-go/helpers/mail"
-	message "github.com/uug-ai/hub-pipeline-notification/message"
 )
 
 type Sendgrid struct {
@@ -14,7 +13,7 @@ type Sendgrid struct {
 	TemplateId       string `json:"templateId,omitempty"`
 }
 
-func (sendg Sendgrid) SendNotification(message message.Message) bool {
+func (sendg Sendgrid) SendNotification(message Message) bool {
 
 	from := mail.NewEmail(sendg.EmailFromDisplay, sendg.EmailFrom)
 	to := mail.NewEmail(message.User, message.Email)

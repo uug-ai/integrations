@@ -1,4 +1,4 @@
-package channels
+package pkg
 
 import (
 	"bytes"
@@ -6,15 +6,13 @@ import (
 	"log"
 	"net/http"
 	"time"
-
-	message "github.com/uug-ai/hub-pipeline-notification/message"
 )
 
 type Webhook struct {
 	Url string `json:"url,omitempty"`
 }
 
-func (webhook Webhook) Send(message message.Message) bool {
+func (webhook Webhook) Send(message Message) bool {
 	bytesRepresentation, err := json.Marshal(message)
 	if err != nil {
 		log.Fatalln(err)

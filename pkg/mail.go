@@ -1,4 +1,4 @@
-package channels
+package pkg
 
 import (
 	"context"
@@ -6,7 +6,6 @@ import (
 
 	//shorturl "github.com/subosito/shorturl"
 	mailgun "github.com/mailgun/mailgun-go/v4"
-	message "github.com/uug-ai/hub-pipeline-notification/message"
 )
 
 type Mail struct {
@@ -17,7 +16,7 @@ type Mail struct {
 	EmailFrom  string `json:"email_from,omitempty"`
 }
 
-func (mail Mail) Send(message message.Message) error {
+func (mail Mail) Send(message Message) error {
 
 	domain := mail.Domain
 	ApiKey := mail.ApiKey
