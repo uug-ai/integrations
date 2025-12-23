@@ -2,6 +2,7 @@ package integrations
 
 import (
 	"github.com/slack-go/slack"
+	"github.com/uug-ai/models/pkg/models"
 )
 
 type Slack struct {
@@ -11,7 +12,7 @@ type Slack struct {
 	Username string `json:"username,omitempty"`
 }
 
-func (s Slack) Send(message Message) error {
+func (s Slack) Send(message models.Message) error {
 
 	//token := s.Token
 	//channelName := s.Channel
@@ -20,7 +21,7 @@ func (s Slack) Send(message Message) error {
 
 	url := ""
 	if len(message.Media) > 0 {
-		longUrl := message.Media[0].Url
+		longUrl := message.Media[0].AtRuntimeMetadata.VideoUrl
 		url = longUrl
 		/*provider := "tinyurl"
 		shortenedUrl, err := shorturl.Shorten(longUrl, provider)
@@ -36,7 +37,7 @@ func (s Slack) Send(message Message) error {
 
 	attachment := slack.Attachment{
 		Color:    "good",
-		ImageURL: message.Media[0].ThumbnailUrl,
+		ImageURL: message.Media[0].AtRuntimeMetadata.ThumbnailUrl,
 	}
 
 	msg := slack.WebhookMessage{

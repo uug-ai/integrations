@@ -6,13 +6,15 @@ import (
 	"log"
 	"net/http"
 	"time"
+
+	"github.com/uug-ai/models/pkg/models"
 )
 
 type Webhook struct {
 	Url string `json:"url,omitempty"`
 }
 
-func (webhook Webhook) Send(message Message) bool {
+func (webhook Webhook) Send(message models.Message) bool {
 	bytesRepresentation, err := json.Marshal(message)
 	if err != nil {
 		log.Fatalln(err)

@@ -3,10 +3,12 @@ package integrations
 import (
 	"testing"
 	"time"
+
+	"github.com/uug-ai/models/pkg/models"
 )
 
 func TestPusher(t *testing.T) {
-	m := Message{}
+	m := models.Message{}
 	m.Type = "message"
 	m.Timestamp = int64(time.Now().Unix())
 	m.Title = "Something happened"

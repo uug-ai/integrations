@@ -3,6 +3,8 @@ package integrations
 import (
 	"testing"
 	"time"
+
+	"github.com/uug-ai/models/pkg/models"
 )
 
 var smtpMailtrap = SMTP{
@@ -24,7 +26,7 @@ func TestSMTPWelcome(t *testing.T) {
 	tout := time.Duration(timeout) * time.Millisecond
 	time.Sleep(tout)
 
-	m := Message{}
+	m := models.Message{}
 	m.Type = "message"
 	m.Timestamp = int64(time.Now().Unix())
 	m.Title = "(SMTP) Welcome to Kerberos Hub - Activate your account"
@@ -50,7 +52,7 @@ func TestSMTPAssignTask(t *testing.T) {
 	tout := time.Duration(timeout) * time.Millisecond
 	time.Sleep(tout)
 
-	m := Message{}
+	m := models.Message{}
 	m.Type = "message"
 	m.Timestamp = int64(time.Now().Unix())
 	m.Title = "(SMTP) You have been assigned a task on Kerberos Hub"
@@ -77,7 +79,7 @@ func TestSMTPForgot(t *testing.T) {
 	tout := time.Duration(timeout) * time.Millisecond
 	time.Sleep(tout)
 
-	m := Message{}
+	m := models.Message{}
 	m.Type = "message"
 	m.Timestamp = int64(time.Now().Unix())
 	m.Title = "(SMTP) Password reset Kerberos Hub. You forgot your password"
@@ -104,7 +106,7 @@ func TestSMTPActivate(t *testing.T) {
 	tout := time.Duration(timeout) * time.Millisecond
 	time.Sleep(tout)
 
-	m := Message{}
+	m := models.Message{}
 	m.Type = "message"
 	m.Timestamp = int64(time.Now().Unix())
 	m.Title = "(SMTP) Wonderful! Your Kerberos Hub is now active"
@@ -129,7 +131,7 @@ func TestSMTPDetection(t *testing.T) {
 	tout := time.Duration(timeout) * time.Millisecond
 	time.Sleep(tout)
 
-	m := Message{}
+	m := models.Message{}
 	m.Type = "message"
 	m.Timestamp = int64(time.Now().Unix())
 	m.Title = "(SMTP) Alert: Kerberos Hub detected something."
@@ -155,7 +157,7 @@ func TestSMTPHighUpload(t *testing.T) {
 	tout := time.Duration(timeout) * time.Millisecond
 	time.Sleep(tout)
 
-	m := Message{}
+	m := models.Message{}
 	m.Type = "message"
 	m.Timestamp = int64(time.Now().Unix())
 	m.Title = "(SMTP) Alert: High upload triggered to Kerberos Hub"
@@ -180,7 +182,7 @@ func TestSMTPDevice(t *testing.T) {
 	tout := time.Duration(timeout) * time.Millisecond
 	time.Sleep(tout)
 
-	m := Message{}
+	m := models.Message{}
 	m.Type = "message"
 	m.Timestamp = int64(time.Now().Unix())
 	m.Title = "(SMTP) Alert: A Kerberos Agent's status changed"
@@ -205,7 +207,7 @@ func TestSMTPDisabled(t *testing.T) {
 	tout := time.Duration(timeout) * time.Millisecond
 	time.Sleep(tout)
 
-	m := Message{}
+	m := models.Message{}
 	m.Type = "message"
 	m.Timestamp = int64(time.Now().Unix())
 	m.Title = "(SMTP) Daily upload reached: Kerberos Hub account disabled"
@@ -231,7 +233,7 @@ func TestSMTPNewIP(t *testing.T) {
 	tout := time.Duration(timeout) * time.Millisecond
 	time.Sleep(tout)
 
-	m := Message{}
+	m := models.Message{}
 	m.Type = "message"
 	m.Timestamp = int64(time.Now().Unix())
 	m.Title = "(SMTP) New Login: A new device/location connect to your Kerberos Hub account"

@@ -82,8 +82,8 @@ github.com/stretchr/testify v1.11.1 h1:7s2iGBzp5EwR7/aIZr8ao5+dra3wiQyKjjFuvgVKu
 github.com/stretchr/testify v1.11.1/go.mod h1:wZwfW3scLgRK+23gO65QZefKpKQRnfz6sD981Nm4B6U=
 github.com/technoweenie/multipartstreamer v1.0.1 h1:XRztA5MXiR1TIRHxH2uNxXxaIkKQDeX7m2XsSOlQEnM=
 github.com/technoweenie/multipartstreamer v1.0.1/go.mod h1:jNVxdtShOxzAsukZwTSw6MDx5eUJoiEBsSvzDU9uzog=
-github.com/uug-ai/models v1.2.20 h1:8sXZ9mbbz2COQQAgl7J746zS9KWUNuIyVxBBA6vVba0=
-github.com/uug-ai/models v1.2.20/go.mod h1:0EHI6EKF/f2J1iXmFuPFuZZ2yv9Q6kphqcS8wzHYGd8=
+github.com/uug-ai/models v1.2.21 h1:fXgmG+qS8+pg4/15K/nZe40PFStVaP6CZEpD5f4QPTM=
+github.com/uug-ai/models v1.2.21/go.mod h1:0EHI6EKF/f2J1iXmFuPFuZZ2yv9Q6kphqcS8wzHYGd8=
 github.com/xconstruct/go-pushbullet v0.0.0-20171206132031-67759df45fbb h1:m+CPNoRrlFVxLKZeodSyEc9cc1GBWYJutHO/eOByUo8=
 github.com/xconstruct/go-pushbullet v0.0.0-20171206132031-67759df45fbb/go.mod h1:OdGNyFi3/K/Fl/3pZu3lAGKMBhTQDl9Lgjn08LSA95Q=
 github.com/xdg-go/pbkdf2 v1.0.0 h1:Su7DPu48wXMwC3bs7MCNG+z4FhcyEuz5dlvchbq0B0c=

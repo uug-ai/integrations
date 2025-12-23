@@ -1,6 +1,7 @@
 package integrations
 
 import (
+	"github.com/uug-ai/models/pkg/models"
 	pushb "github.com/xconstruct/go-pushbullet"
 )
 
@@ -8,7 +9,7 @@ type Pushbullet struct {
 	ApiKey string `json:"api_key,omitempty"`
 }
 
-func (pushbullet Pushbullet) SendLink(message Message) bool {
+func (pushbullet Pushbullet) SendLink(message models.Message) bool {
 
 	// Instantiate a client
 	pb := pushb.New(pushbullet.ApiKey)
@@ -18,14 +19,14 @@ func (pushbullet Pushbullet) SendLink(message Message) bool {
 	if err == nil {
 		// Send a message to the first device
 		for _, dev := range devs {
-			pb.PushLink(dev.Iden, message.Title, message.Media[0].Url, message.Body)
+			pb.PushLink(dev.Iden, message.Title, message.Media[0].AtRuntimeMetadata.VideoUrl, message.Body)
 		}
 	}
 
 	return true
 }
 
-func (pushbullet Pushbullet) SendMessage(message Message) bool {
+func (pushbullet Pushbullet) SendMessage(message models.Message) bool {
 
 	// Instantiate a client
 	pb := pushb.New(pushbullet.ApiKey)

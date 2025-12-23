@@ -7,6 +7,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/uug-ai/models/pkg/models"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"go.opentelemetry.io/contrib/instrumentation/go.mongodb.org/mongo-driver/mongo/otelmongo"
@@ -84,7 +85,7 @@ func New() *Mongodb {
 	return _instance
 }
 
-func (mongodb *Mongodb) SendNotification(msg Message) error {
+func (mongodb *Mongodb) SendNotification(msg models.Message) error {
 
 	if msg.UserId != "" {
 		client := New().Client

@@ -2,6 +2,7 @@ package integrations
 
 import (
 	"github.com/sfreiberg/gotwilio"
+	"github.com/uug-ai/models/pkg/models"
 )
 
 type Sms struct {
@@ -11,7 +12,7 @@ type Sms struct {
 	To         string `json:"to,omitempty"`
 }
 
-func (sms Sms) Send(m Message) bool {
+func (sms Sms) Send(m models.Message) bool {
 
 	accountSid := sms.AccountSID
 	authToken := sms.AuthToken

@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/uug-ai/models/pkg/models"
 	"gopkg.in/gomail.v2"
 )
 
@@ -20,7 +21,7 @@ type SMTP struct {
 	TemplateId string `json:"template_id,omitempty"`
 }
 
-func (smtp SMTP) Send(message Message, body string, textBody string) error {
+func (smtp SMTP) Send(message models.Message, body string, textBody string) error {
 	port, _ := strconv.Atoi(smtp.Port)
 	d := gomail.NewDialer(smtp.Server, port, smtp.Username, smtp.Password)
 	d.TLSConfig = &tls.Config{InsecureSkipVerify: true}
@@ -68,7 +69,7 @@ func (smtp SMTP) Send(message Message, body string, textBody string) error {
 // - {{numberOfMedia}}: number of media attached to the message
 // - {{dataUsage}}: data usage of the message
 
-func ReplaceValues(body string, message Message) string {
+func ReplaceValues(body string, message models.Message) string {
 
 	body = strings.ReplaceAll(body, "{{tab1_title}}", "")
 	body = strings.ReplaceAll(body, "{{tab2_title}}", "")
@@ -92,7 +93,7 @@ func ReplaceValues(body string, message Message) string {
 
 	// {{link}} this will inject a link to the media (recording)
 	if len(message.Media) > 0 {
-		longUrl := message.Media[0].Url
+		longUrl := message.Media[0].AtRuntimeMetadata.VideoUrl
 		body = strings.ReplaceAll(body, "{{link}}", longUrl)
 	}
 	if message.Data["link"] != "" {
@@ -102,8 +103,8 @@ func ReplaceValues(body string, message Message) string {
 	// {{thumbnail}} this will inject an image (either a base64 or a url).
 	if message.Thumbnail != "" {
 		body = strings.ReplaceAll(body, "{{thumbnail}}", "<img src='base64:"+message.Thumbnail+"' width='400px' height='auto' />")
-	} else if len(message.Media) > 0 && message.Media[0].ThumbnailUrl != "" {
-		body = strings.ReplaceAll(body, "{{thumbnail}}", "<img src='"+message.Media[0].ThumbnailUrl+"' width='400px' height='auto' />")
+	} else if len(message.Media) > 0 && message.Media[0].AtRuntimeMetadata.ThumbnailUrl != "" {
+		body = strings.ReplaceAll(body, "{{thumbnail}}", "<img src='"+message.Media[0].AtRuntimeMetadata.ThumbnailUrl+"' width='400px' height='auto' />")
 	}
 
 	// {{classifications}} this will inject a list of classifications detected in the recording.
@@ -112,8 +113,8 @@ func ReplaceValues(body string, message Message) string {
 	}
 
 	// {{date}} {{time}} {{datetime}} of the start.
-	if len(message.Media) > 0 && message.Media[0].Timestamp > 0 {
-		t := time.Unix(message.Media[0].Timestamp, 0)
+	if len(message.Media) > 0 && message.Media[0].StartTimestamp > 0 {
+		t := time.Unix(message.Media[0].StartTimestamp, 0)
 		// Get time with timezone
 		if message.Timezone != "" {
 			loc, _ := time.LoadLocation(message.Timezone)

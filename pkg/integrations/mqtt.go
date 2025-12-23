@@ -5,6 +5,7 @@ import (
 	"time"
 
 	mqttPaho "github.com/eclipse/paho.mqtt.golang"
+	"github.com/uug-ai/models/pkg/models"
 )
 
 type MQTT struct {
@@ -13,7 +14,7 @@ type MQTT struct {
 	Password string
 }
 
-func (mqtt MQTT) SendNotification(message Message) bool {
+func (mqtt MQTT) SendNotification(message models.Message) bool {
 
 	MQTTURI := mqtt.URI
 	MQTTUsername := mqtt.Username

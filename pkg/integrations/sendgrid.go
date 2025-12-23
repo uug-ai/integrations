@@ -3,6 +3,7 @@ package integrations
 import (
 	sg "github.com/sendgrid/sendgrid-go"
 	mail "github.com/sendgrid/sendgrid-go/helpers/mail"
+	"github.com/uug-ai/models/pkg/models"
 )
 
 type Sendgrid struct {
@@ -13,7 +14,7 @@ type Sendgrid struct {
 	TemplateId       string `json:"templateId,omitempty"`
 }
 
-func (sendg Sendgrid) SendNotification(message Message) bool {
+func (sendg Sendgrid) SendNotification(message models.Message) bool {
 
 	from := mail.NewEmail(sendg.EmailFromDisplay, sendg.EmailFrom)
 	to := mail.NewEmail(message.User, message.Email)
@@ -33,7 +34,7 @@ func (sendg Sendgrid) SendNotification(message Message) bool {
 	m.Personalizations[0].SetSubstitution("{{text}}", message.Body)
 
 	if len(message.Media) > 0 {
-		longUrl := message.Media[0].Url
+		longUrl := message.Media[0].AtRuntimeMetadata.VideoUrl
 		//provider := "tinyurl"
 		url := longUrl
 		/*provider := "tinyurl"

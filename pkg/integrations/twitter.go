@@ -3,11 +3,12 @@ package integrations
 import (
 	tw "github.com/dghubble/go-twitter/twitter"
 	"github.com/dghubble/oauth1"
+	"github.com/uug-ai/models/pkg/models"
 )
 
 type Twitter struct{}
 
-func (twitter Twitter) SendNotification(message Message) bool {
+func (twitter Twitter) SendNotification(message models.Message) bool {
 
 	// Twitter client
 	config := oauth1.NewConfig("consumerKey", "pTMuNmxrTlG7IlmqXEzeqjfx7nUFPiwUXsXNUhNOWlYkHxLjXz")

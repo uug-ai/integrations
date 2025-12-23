@@ -13,7 +13,7 @@ require (
 	github.com/sendgrid/sendgrid-go v3.16.1+incompatible
 	github.com/sfreiberg/gotwilio v1.0.0
 	github.com/slack-go/slack v0.17.3
-	github.com/uug-ai/models v1.2.20
+	github.com/uug-ai/models v1.2.21
 	github.com/xconstruct/go-pushbullet v0.0.0-20171206132031-67759df45fbb
 	go.mongodb.org/mongo-driver v1.17.6
 	go.opentelemetry.io/contrib/instrumentation/go.mongodb.org/mongo-driver/mongo/otelmongo v0.64.0

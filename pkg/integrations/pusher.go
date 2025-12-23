@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	push "github.com/pusher/pusher-http-go"
+	"github.com/uug-ai/models/pkg/models"
 )
 
 // Following message is send to pusher, structure may be modified,
@@ -48,7 +49,7 @@ type Pusher struct {
 	Channel string `json:"channel,omitempty"`
 }
 
-func (pusher Pusher) SendNotification(message Message) bool {
+func (pusher Pusher) SendNotification(message models.Message) bool {
 
 	// instantiate a client
 	client := push.Client{
@@ -63,9 +64,8 @@ func (pusher Pusher) SendNotification(message Message) bool {
 	pusherMessage.Sequence.Text = message.Body
 	pusherMessage.Sequence.Media = []PusherMedia{}
 	pusherMessage.Sequence.Media = append(pusherMessage.Sequence.Media, PusherMedia{
-		Title: fmt.Sprintf("%v", message.Media[0].Timestamp),
-		Type:  message.Media[0].Type,
-		Media: message.Media[0].Url,
+		Title: fmt.Sprintf("%v", message.Media[0].StartTimestamp),
+		Media: message.Media[0].AtRuntimeMetadata.VideoUrl,
 	})
 
 	// trigger an event on the users channel, along with a data payload.
@@ -74,7 +74,7 @@ func (pusher Pusher) SendNotification(message Message) bool {
 	return true
 }
 
-func (pusher Pusher) Send(message Message) bool {
+func (pusher Pusher) Send(message models.Message) bool {
 
 	// instantiate a client
 	client := push.Client{
