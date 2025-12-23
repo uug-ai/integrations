@@ -1,10 +1,11 @@
 package integrations
 
 import (
+	"testing"
 	"time"
 )
 
-func TestIfttt() {
+func TestIfttt(t *testing.T) {
 	m := Message{}
 	m.Type = "message"
 	m.Timestamp = int64(time.Now().Unix())
@@ -24,5 +25,6 @@ func TestIfttt() {
 	}
 	ifttt.Send(m)
 
-	return
+	// Successful test if we reach this point.
+	//t.Log("IFTTT test executed")
 }

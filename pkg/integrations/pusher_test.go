@@ -1,10 +1,11 @@
 package integrations
 
 import (
+	"testing"
 	"time"
 )
 
-func TestPusher() {
+func TestPusher(t *testing.T) {
 	m := Message{}
 	m.Type = "message"
 	m.Timestamp = int64(time.Now().Unix())
@@ -23,6 +24,4 @@ func TestPusher() {
 		Channel: "notification",
 	}
 	pusher.Send(m)
-
-	return
 }

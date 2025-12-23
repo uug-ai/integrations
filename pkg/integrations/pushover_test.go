@@ -1,10 +1,11 @@
 package integrations
 
 import (
+	"testing"
 	"time"
 )
 
-func TestPushover() {
+func TestPushover(t *testing.T) {
 	m := Message{}
 	m.Type = "message"
 	m.Timestamp = int64(time.Now().Unix())
@@ -24,6 +25,4 @@ func TestPushover() {
 		SendTo: "xxx",
 	}
 	pushover.Send(m)
-
-	return
 }

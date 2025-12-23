@@ -1,10 +1,11 @@
 package integrations
 
 import (
+	"testing"
 	"time"
 )
 
-func TestWebhook() {
+func TestWebhook(t *testing.T) {
 	m := Message{}
 	m.Type = "message"
 	m.Timestamp = int64(time.Now().Unix())
@@ -23,6 +24,4 @@ func TestWebhook() {
 		Url: "http://kerberos.cloud/hook",
 	}
 	webhook.Send(m)
-
-	return
 }

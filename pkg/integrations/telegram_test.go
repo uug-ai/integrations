@@ -1,10 +1,11 @@
 package integrations
 
 import (
+	"testing"
 	"time"
 )
 
-func TestTelegram() {
+func TestTelegram(t *testing.T) {
 	m := Message{}
 	m.Type = "message"
 	m.Timestamp = int64(time.Now().Unix())
@@ -24,6 +25,4 @@ func TestTelegram() {
 		Channel: "xxx",
 	}
 	telegram.Send(m)
-
-	return
 }

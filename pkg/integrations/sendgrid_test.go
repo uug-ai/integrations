@@ -1,10 +1,11 @@
 package integrations
 
 import (
+	"testing"
 	"time"
 )
 
-func TestSendgrid() {
+func TestSendgrid(t *testing.T) {
 	m := Message{}
 	m.Type = "message"
 	m.Timestamp = int64(time.Now().Unix())
@@ -24,6 +25,4 @@ func TestSendgrid() {
 		EmailTo:    "xxx@xxx.io",
 	}
 	sendgrid.SendNotification(m)
-
-	return
 }
