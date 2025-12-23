@@ -1,4 +1,4 @@
-package pkg
+package integrations
 
 import (
 	pushb "github.com/xconstruct/go-pushbullet"

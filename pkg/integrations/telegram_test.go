@@ -1,10 +1,10 @@
-package pkg
+package integrations
 
 import (
 	"time"
 )
 
-func TestIfttt() {
+func TestTelegram() {
 	m := Message{}
 	m.Type = "message"
 	m.Timestamp = int64(time.Now().Unix())
@@ -19,10 +19,11 @@ func TestIfttt() {
 	// ....
 
 	// Send message to all channels.
-	ifttt := Ifttt{
-		Token: "xxx",
+	telegram := Telegram{
+		Token:   "xxx",
+		Channel: "xxx",
 	}
-	ifttt.Send(m)
+	telegram.Send(m)
 
 	return
 }

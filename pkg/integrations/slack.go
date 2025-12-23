@@ -1,4 +1,4 @@
-package pkg
+package integrations
 
 import (
 	"github.com/slack-go/slack"

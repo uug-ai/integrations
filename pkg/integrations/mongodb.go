@@ -1,4 +1,4 @@
-package pkg
+package integrations
 
 import (
 	"context"
@@ -6,6 +6,10 @@ import (
 	"os"
 	"sync"
 	"time"
+
+	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
+	"go.opentelemetry.io/contrib/instrumentation/go.mongodb.org/mongo-driver/mongo/otelmongo"
 )
 
 type Mongodb struct {

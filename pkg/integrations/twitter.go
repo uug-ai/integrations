@@ -1,4 +1,4 @@
-package pkg
+package integrations
 
 import (
 	tw "github.com/dghubble/go-twitter/twitter"

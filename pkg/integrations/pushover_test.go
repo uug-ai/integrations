@@ -1,10 +1,10 @@
-package pkg
+package integrations
 
 import (
 	"time"
 )
 
-func TestPusher() {
+func TestPushover() {
 	m := Message{}
 	m.Type = "message"
 	m.Timestamp = int64(time.Now().Unix())
@@ -19,10 +19,11 @@ func TestPusher() {
 	// ....
 
 	// Send message to all channels.
-	pusher := Pusher{
-		Channel: "notification",
+	pushover := Pushover{
+		ApiKey: "xxx",
+		SendTo: "xxx",
 	}
-	pusher.Send(m)
+	pushover.Send(m)
 
 	return
 }

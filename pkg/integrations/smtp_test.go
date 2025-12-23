@@ -1,4 +1,4 @@
-package pkg
+package integrations
 
 import (
 	"testing"
@@ -24,7 +24,7 @@ func TestSMTPWelcome(t *testing.T) {
 	tout := time.Duration(timeout) * time.Millisecond
 	time.Sleep(tout)
 
-	m := message.Message{}
+	m := Message{}
 	m.Type = "message"
 	m.Timestamp = int64(time.Now().Unix())
 	m.Title = "(SMTP) Welcome to Kerberos Hub - Activate your account"
@@ -37,14 +37,7 @@ func TestSMTPWelcome(t *testing.T) {
 
 	// Send message to mailtrap.
 	smtpMailtrap.TemplateId = "welcome"
-	err := smtpMailtrap.Send(m)
-	if err != nil {
-		t.Errorf("expected error to be nil got %v", err)
-	}
-
-	// Send message to mailgun.
-	smtpMailtrap.TemplateId = "welcome"
-	err = smtpMailtrap.Send(m)
+	err := smtpMailtrap.Send(m, "", "")
 	if err != nil {
 		t.Errorf("expected error to be nil got %v", err)
 	}
@@ -71,16 +64,9 @@ func TestSMTPAssignTask(t *testing.T) {
 
 	// Send message to mailtrap.
 	smtpMailtrap.TemplateId = "assign_task"
-	err := smtpMailtrap.Send(m)
+	err := smtpMailtrap.Send(m, "", "")
 	if err != nil {
 		//	t.Errorf("expected error to be nil got %v", err)
-	}
-
-	// Send message to mailgun.
-	smtpMailtrap.TemplateId = "assign_task"
-	err = smtpMailtrap.Send(m)
-	if err != nil {
-		t.Errorf("expected error to be nil got %v", err)
 	}
 }
 
@@ -105,16 +91,9 @@ func TestSMTPForgot(t *testing.T) {
 
 	// Send message to mailtrap.
 	smtpMailtrap.TemplateId = "forgot"
-	err := smtpMailtrap.Send(m)
+	err := smtpMailtrap.Send(m, "", "")
 	if err != nil {
 		//t.Errorf("expected error to be nil got %v", err)
-	}
-
-	// Send message to mailgun.
-	smtpMailtrap.TemplateId = "forgot"
-	err = smtpMailtrap.Send(m)
-	if err != nil {
-		t.Errorf("expected error to be nil got %v", err)
 	}
 }
 
@@ -137,16 +116,9 @@ func TestSMTPActivate(t *testing.T) {
 
 	// Send message to mailtrap.
 	smtpMailtrap.TemplateId = "activate"
-	err := smtpMailtrap.Send(m)
+	err := smtpMailtrap.Send(m, "", "")
 	if err != nil {
 		//t.Errorf("expected error to be nil got %v", err)
-	}
-
-	// Send message to mailgun.
-	smtpMailtrap.TemplateId = "activate"
-	err = smtpMailtrap.Send(m)
-	if err != nil {
-		t.Errorf("expected error to be nil got %v", err)
 	}
 }
 
@@ -170,16 +142,9 @@ func TestSMTPDetection(t *testing.T) {
 
 	// Send message to mailtrap.
 	smtpMailtrap.TemplateId = "detection"
-	err := smtpMailtrap.Send(m)
+	err := smtpMailtrap.Send(m, "", "")
 	if err != nil {
 		//t.Errorf("expected error to be nil got %v", err)
-	}
-
-	// Send message to mailgun.
-	smtpMailtrap.TemplateId = "detection"
-	err = smtpMailtrap.Send(m)
-	if err != nil {
-		t.Errorf("expected error to be nil got %v", err)
 	}
 }
 
@@ -202,16 +167,9 @@ func TestSMTPHighUpload(t *testing.T) {
 
 	// Send message to mailtrap.
 	smtpMailtrap.TemplateId = "highupload"
-	err := smtpMailtrap.Send(m)
+	err := smtpMailtrap.Send(m, "", "")
 	if err != nil {
 		//t.Errorf("expected error to be nil got %v", err)
-	}
-
-	// Send message to mailgun.
-	smtpMailtrap.TemplateId = "highupload"
-	err = smtpMailtrap.Send(m)
-	if err != nil {
-		t.Errorf("expected error to be nil got %v", err)
 	}
 }
 
@@ -234,16 +192,9 @@ func TestSMTPDevice(t *testing.T) {
 
 	// Send message to mailtrap.
 	smtpMailtrap.TemplateId = "device"
-	err := smtpMailtrap.Send(m)
+	err := smtpMailtrap.Send(m, "", "")
 	if err != nil {
 		//t.Errorf("expected error to be nil got %v", err)
-	}
-
-	// Send message to mailgun.
-	smtpMailtrap.TemplateId = "device"
-	err = smtpMailtrap.Send(m)
-	if err != nil {
-		t.Errorf("expected error to be nil got %v", err)
 	}
 }
 
@@ -267,16 +218,9 @@ func TestSMTPDisabled(t *testing.T) {
 
 	// Send message to mailtrap.
 	smtpMailtrap.TemplateId = "disable"
-	err := smtpMailtrap.Send(m)
+	err := smtpMailtrap.Send(m, "", "")
 	if err != nil {
 		//t.Errorf("expected error to be nil got %v", err)
-	}
-
-	// Send message to mailgun.
-	smtpMailtrap.TemplateId = "disable"
-	err = smtpMailtrap.Send(m)
-	if err != nil {
-		t.Errorf("expected error to be nil got %v", err)
 	}
 }
 
@@ -300,15 +244,8 @@ func TestSMTPNewIP(t *testing.T) {
 
 	// Send message to mailtrap.
 	smtpMailtrap.TemplateId = "newip"
-	err := smtpMailtrap.Send(m)
+	err := smtpMailtrap.Send(m, "", "")
 	if err != nil {
 		//t.Errorf("expected error to be nil got %v", err)
-	}
-
-	// Send message to mailgun.
-	smtpMailtrap.TemplateId = "newip"
-	err = smtpMailtrap.Send(m)
-	if err != nil {
-		t.Errorf("expected error to be nil got %v", err)
 	}
 }

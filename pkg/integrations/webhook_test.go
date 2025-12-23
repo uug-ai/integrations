@@ -1,10 +1,10 @@
-package pkg
+package integrations
 
 import (
 	"time"
 )
 
-func TestTelegram() {
+func TestWebhook() {
 	m := Message{}
 	m.Type = "message"
 	m.Timestamp = int64(time.Now().Unix())
@@ -19,11 +19,10 @@ func TestTelegram() {
 	// ....
 
 	// Send message to all channels.
-	telegram := Telegram{
-		Token:   "xxx",
-		Channel: "xxx",
+	webhook := Webhook{
+		Url: "http://kerberos.cloud/hook",
 	}
-	telegram.Send(m)
+	webhook.Send(m)
 
 	return
 }

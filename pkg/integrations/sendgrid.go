@@ -1,4 +1,4 @@
-package pkg
+package integrations
 
 import (
 	sg "github.com/sendgrid/sendgrid-go"
