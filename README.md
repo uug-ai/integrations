@@ -7,13 +7,13 @@ Universal notification and messaging integrations for Go.
 [![Go Report Card](https://goreportcard.com/badge/github.com/uug-ai/integrations)](https://goreportcard.com/report/github.com/uug-ai/integrations)
 [![codecov](https://codecov.io/gh/uug-ai/integrations/graph/badge.svg?token=BOInBI4j2N)](https://codecov.io/gh/uug-ai/integrations)
 
-A Go library for sending notifications and messages across multiple platforms and services with a unified interface.
+A Go library for sending notifications and messages across multiple platforms and services with a unified interface using the functional options pattern.
 
 ## Features
 
 - 15+ integrations for popular messaging and notification services
-- Unified interface across all integrations
-- Type safe with full Go type safety and compile-time checks
+- Functional options pattern for flexible configuration
+- Built-in validation with compile-time type safety
 - Comprehensive test coverage
 - MongoDB support
 - OpenTelemetry observability and tracing support
@@ -30,22 +30,24 @@ go get github.com/uug-ai/integrations
 package main
 
 import (
+    "log"
     "github.com/uug-ai/integrations/pkg/integrations"
 )
 
 func main() {
-    // Slack example
-    slack := integrations.Slack{
-        Hook:     "https://hooks.slack.com/services/YOUR/WEBHOOK/URL",
-        Username: "MyBot",
+    // Create a Slack integration using the functional options pattern
+    slack, err := integrations.CreateSlack(
+        integrations.WithSlackHook("https://hooks.slack.com/services/YOUR/WEBHOOK/URL"),
+        integrations.WithSlackUsername("MyBot"),
+    )
+    if err != nil {
+        log.Fatal(err)
     }
 
-    body := "Hello from integrations!"
-    imageUrl := "https://example.com/image.png" // Optional image URL, use empty string if not needed
-
-    err := slack.Send(body, imageUrl)
+    // Send a message
+    err = slack.Send("Hello from integrations!", "")
     if err != nil {
-        panic(err)
+        log.Fatal(err)
     }
 }
 ```
@@ -70,22 +72,94 @@ func main() {
 | **Mail** | Email via Mailgun | Ready |
 | **MongoDB** | Database storage integration | Ready |
 
+## Core Concepts
+
+### Functional Options Pattern
+
+All integrations use the functional options pattern for configuration. This provides:
+- **Flexibility**: Configure only what you need
+- **Validation**: Built-in validation before use
+- **Type Safety**: Compile-time type checking
+- **Extensibility**: Easy to add new options
+
+### Creating Integrations
+
+Each integration follows this pattern:
+
+1. **Create** the integration using a `Create<Integration>()` function with functional options
+2. **Validate** configuration automatically during creation
+3. **Send** messages using the `Send()` method
+
 ## Usage Examples
+
+### SMTP (Email)
+
+The SMTP integration demonstrates the functional options pattern:
+
+```go
+package main
+
+import (
+    "log"
+    "github.com/uug-ai/integrations/pkg/integrations"
+)
+
+func main() {
+    // Create SMTP integration with functional options
+    smtp, err := integrations.CreateSMTP(
+        integrations.WithSMTPServer("smtp.gmail.com"),
+        integrations.WithSMTPPort(587),
+        integrations.WithSMTPUsername("your-email@gmail.com"),
+        integrations.WithSMTPPassword("your-app-password"),
+        integrations.WithSMTPEmailFrom("sender@example.com"),
+        integrations.WithSMTPEmailTo("recipient@example.com"),
+    )
+    if err != nil {
+        log.Fatal(err)
+    }
+
+    // Send an email
+    err = smtp.Send(
+        "Email Subject",           // title
+        "Plain text body",          // body
+        "<h1>HTML body</h1>",      // textBody (HTML alternative)
+    )
+    if err != nil {
+        log.Fatal(err)
+    }
+}
+```
+
+**Available Options:**
+- `WithSMTPServer(server string)` - SMTP server hostname
+- `WithSMTPPort(port int)` - SMTP server port
+- `WithSMTPUsername(username string)` - Authentication username
+- `WithSMTPPassword(password string)` - Authentication password
+- `WithSMTPEmailFrom(email string)` - Sender email address
+- `WithSMTPEmailTo(email string)` - Recipient email address
 
 ### Slack
 
 ```go
-slack := integrations.Slack{
-    Hook:     "https://hooks.slack.com/services/YOUR/WEBHOOK/URL",
-    Username: "MyBot",
+// Create Slack integration
+slack, err := integrations.CreateSlack(
+    integrations.WithSlackHook("https://hooks.slack.com/services/YOUR/WEBHOOK/URL"),
+    integrations.WithSlackUsername("MyBot"),
+)
+if err != nil {
+    log.Fatal(err)
 }
 
 // Send a text message
-err := slack.Send("Hello from Slack!", "")
+err = slack.Send("Hello from Slack!", "")
 
 // Send a message with an image attachment
-err := slack.Send("Check out this image!", "https://example.com/image.png")
+err = slack.Send("Check out this image!", "https://example.com/image.png")
 ```
+
+**Available Options:**
+- `WithSlackHook(hook string)` - Slack webhook URL
+- `WithSlackUsername(username string)` - Bot username to display
 
 ## Project Structure
 
@@ -96,9 +170,9 @@ err := slack.Send("Check out this image!", "https://example.com/image.png")
 │       ├── alexa.go
 │       ├── ifttt.go
 │       ├── mail.go
-│       ├── message.go       # Message struct definition
 │       ├── mongodb.go
 │       ├── mqtt.go
+│       ├── option.go        # Generic functional option type
 │       ├── pushbullet.go
 │       ├── pusher.go
 │       ├── pushover.go
@@ -114,40 +188,183 @@ err := slack.Send("Check out this image!", "https://example.com/image.png")
 └── README.md
 ```
 
-## Slack Configuration
+## Creating a New Integration
 
-The Slack integration uses webhook URLs for sending messages:
+To create a new integration following the functional options pattern:
+
+### 1. Define the Integration Struct
 
 ```go
-type Slack struct {
-    Hook     string // Slack webhook URL
-    Username string // Bot username to display
+package integrations
+
+type MyService struct {
+    APIKey   string `json:"api_key" validate:"required"`
+    Endpoint string `json:"endpoint" validate:"required,url"`
 }
 ```
 
-The `Send` method accepts two parameters:
-- `body` (string): The message text to send
-- `url` (string): Optional image URL to attach (use empty string if not needed)
+### 2. Create Functional Options
+
+```go
+// WithMyServiceAPIKey sets the API key
+func WithMyServiceAPIKey(apiKey string) Option[MyService] {
+    return func(s *MyService) {
+        s.APIKey = apiKey
+    }
+}
+
+// WithMyServiceEndpoint sets the endpoint URL
+func WithMyServiceEndpoint(endpoint string) Option[MyService] {
+    return func(s *MyService) {
+        s.Endpoint = endpoint
+    }
+}
+```
+
+### 3. Implement the Create Function
+
+```go
+// CreateMyService creates a new MyService instance with the provided options
+func CreateMyService(opts ...Option[MyService]) (*MyService, error) {
+    service := &MyService{}
+
+    // Apply all options
+    for _, opt := range opts {
+        opt(service)
+    }
+
+    // Validate configuration
+    err := service.Validate()
+    if err != nil {
+        return nil, err
+    }
+
+    return service, nil
+}
+```
+
+### 4. Add Validation
+
+```go
+func (s *MyService) Validate() error {
+    validate := validator.New()
+    err := validate.Struct(s)
+    if err != nil {
+        return err
+    }
+    return nil
+}
+```
+
+### 5. Implement the Send Method
+
+```go
+func (s *MyService) Send(message string) error {
+    // Implementation here
+    return nil
+}
+```
+
+### 6. Usage
+
+```go
+service, err := integrations.CreateMyService(
+    integrations.WithMyServiceAPIKey("your-api-key"),
+    integrations.WithMyServiceEndpoint("https://api.example.com"),
+)
+if err != nil {
+    log.Fatal(err)
+}
+
+err = service.Send("Hello, World!")
+```
+
+## Validation
+
+All integrations use [go-playground/validator](https://github.com/go-playground/validator) for configuration validation. Common validation tags:
+
+- `required` - Field must not be empty
+- `email` - Must be a valid email address
+- `url` - Must be a valid URL
+- `gt=0` - Must be greater than 0
+- `min=<value>` - Minimum value/length
+- `max=<value>` - Maximum value/length
+
+The `Validate()` method is automatically called during the `Create<Integration>()` function, ensuring invalid configurations are caught before use.
 
 ## Configuration
 
-Each integration has its own configuration struct. Check the individual integration files in `pkg/integrations/` for specific configuration options.
+### Using Functional Options (Recommended)
 
+```go
+smtp, err := integrations.CreateSMTP(
+    integrations.WithSMTPServer("smtp.gmail.com"),
+    integrations.WithSMTPPort(587),
+    integrations.WithSMTPUsername("user@example.com"),
+    integrations.WithSMTPPassword("password"),
+    integrations.WithSMTPEmailFrom("from@example.com"),
+    integrations.WithSMTPEmailTo("to@example.com"),
+)
+```
 ### Environment Variables
 
-Many integrations support configuration via environment variables:
+You can load configuration from environment variables before creating integrations:
+
+```go
+import "os"
+
+smtp, err := integrations.CreateSMTP(
+    integrations.WithSMTPServer(os.Getenv("SMTP_SERVER")),
+    integrations.WithSMTPPort(587),
+    integrations.WithSMTPUsername(os.Getenv("SMTP_USERNAME")),
+    integrations.WithSMTPPassword(os.Getenv("SMTP_PASSWORD")),
+    integrations.WithSMTPEmailFrom(os.Getenv("SMTP_FROM")),
+    integrations.WithSMTPEmailTo(os.Getenv("SMTP_TO")),
+)
+```
+
+Example `.env` file:
 
 ```bash
-# Slack
-export SLACK_WEBHOOK_URL="https://hooks.slack.com/services/..."
+# SMTP Configuration
+SMTP_SERVER=smtp.gmail.com
+SMTP_USERNAME=your-email@gmail.com
+SMTP_PASSWORD=your-app-password
+SMTP_FROM=sender@example.com
+SMTP_TO=recipient@example.com
 
-# Telegram
-export TELEGRAM_BOT_TOKEN="your_token"
-export TELEGRAM_CHANNEL_ID="your_channel"
+# Slack Configuration
+SLACK_WEBHOOK_URL=https://hooks.slack.com/services/...
+SLACK_USERNAME=MyBot
 
-# Pushover
-export PUSHOVER_TOKEN="your_app_token"
-export PUSHOVER_USER="your_user_key"
+# Telegram Configuration
+TELEGRAM_BOT_TOKEN=your_token
+TELEGRAM_CHANNEL_ID=your_channel
+```
+
+## Error Handling
+
+The functional options pattern provides clear error handling:
+
+```go
+smtp, err := integrations.CreateSMTP(
+    integrations.WithSMTPServer("smtp.gmail.com"),
+    integrations.WithSMTPPort(587),
+    // Missing required fields...
+)
+if err != nil {
+    // Validation error caught at creation time
+    log.Printf("Configuration error: %v", err)
+    return
+}
+
+// If we get here, the configuration is valid
+err = smtp.Send("Subject", "Body", "<h1>HTML</h1>")
+if err != nil {
+    // Runtime error during send
+    log.Printf("Send error: %v", err)
+    return
+}
 ```
 
 ## Testing
@@ -167,7 +384,17 @@ go test -cover ./...
 Run tests for a specific integration:
 
 ```bash
+# SMTP tests
+go test ./pkg/integrations -run TestSMTP
+
+# Slack tests
 go test ./pkg/integrations -run TestSlack
+```
+
+Run all integration tests:
+
+```bash
+go test ./pkg/integrations/... -v
 ```
 
 ## Contributing
