@@ -399,13 +399,19 @@ go test ./pkg/integrations/... -v
 
 ## Contributing
 
-Contributions are welcome. To contribute:
+Contributions are welcome! When adding new integrations, please follow the functional options pattern demonstrated in this repository.
+
+### Development Guidelines
 
 1. Fork the repository
 2. Create a feature branch (`git checkout -b feat/amazing-feature`)
-3. Commit your changes following [Conventional Commits](https://www.conventionalcommits.org/)
-4. Push to your branch (`git push origin feat/amazing-feature`)
-5. Open a Pull Request
+3. Follow the functional options pattern (see "Creating a New Integration" above)
+4. Add comprehensive tests for your integration
+5. Ensure all tests pass: `go test ./...`
+6. Add usage examples to the README
+7. Commit your changes following [Conventional Commits](https://www.conventionalcommits.org/)
+8. Push to your branch (`git push origin feat/amazing-feature`)
+9. Open a Pull Request
 
 ### Commit Message Format
 
@@ -417,30 +423,69 @@ Contributions are welcome. To contribute:
 [optional footer(s)]
 ```
 
-**Types:** `feat`, `fix`, `docs`, `style`, `refactor`, `perf`, `test`, `build`, `ci`, `chore`
+**Types:** `feat`, `fix`, `docs`, `style`, `refactor`, `perf`, `test`, `build`, `ci`, `chore`, `types`
+
+**Scopes:**
+- `models` - Changes to data structures
+- `api` - API-related changes
+- `types` - Type definitions
+- `docs` - Documentation updates
+- Integration names (e.g., `smtp`, `slack`, `telegram`)
 
 **Examples:**
 ```
-feat(telegram): add support for inline keyboards
+feat(smtp): add functional options pattern
+feat(telegram): add CreateTelegram with options
 fix(slack): correct webhook payload formatting
-docs(readme): update usage examples
+docs(readme): update usage examples with functional options
+refactor(pushover): migrate to functional options pattern
+test(smtp): add validation tests
 ```
 
 ## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
-## Acknowledgments
+## Dependencies
 
-This project uses the following libraries:
+This project uses the following key libraries:
 
+- [go-playground/validator](https://github.com/go-playground/validator) - Struct validation
 - [slack-go/slack](https://github.com/slack-go/slack) - Slack API in Go
 - [telegram-bot-api](https://github.com/go-telegram-bot-api/telegram-bot-api) - Telegram Bot API
 - [sendgrid-go](https://github.com/sendgrid/sendgrid-go) - SendGrid email API
 - [mongo-driver](https://github.com/mongodb/mongo-go-driver) - MongoDB driver
 - [paho.mqtt.golang](https://github.com/eclipse/paho.mqtt.golang) - MQTT client
+- [gomail](https://gopkg.in/gomail.v2) - SMTP email library
 
 See [go.mod](go.mod) for the complete list of dependencies.
+
+## Benefits of the Functional Options Pattern
+
+### Type Safety
+The generic `Option[T]` type provides compile-time type checking, preventing configuration errors.
+
+### Flexibility
+Configure only the options you need. No need to pass empty or default values.
+
+### Validation
+Built-in validation ensures configurations are correct before use, catching errors early.
+
+### Extensibility
+Adding new options doesn't break existing code. Simply add new `With*` functions.
+
+### Readability
+```go
+// Clear and self-documenting
+smtp, err := integrations.CreateSMTP(
+    integrations.WithSMTPServer("smtp.gmail.com"),
+    integrations.WithSMTPPort(587),
+    integrations.WithSMTPUsername("user@example.com"),
+    integrations.WithSMTPPassword("password"),
+    integrations.WithSMTPEmailFrom("from@example.com"),
+    integrations.WithSMTPEmailTo("to@example.com"),
+)
+```
 
 ## Support
 
