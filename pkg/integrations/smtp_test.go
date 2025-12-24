@@ -103,6 +103,32 @@ func TestSMTPValidation(t *testing.T) {
 	}
 }
 
+func TestSMTPFieldEmpty(t *testing.T) {
+	smtpMailtrap := setupSMTPTest()
+
+	tests := []struct {
+		title       string
+		body        string
+		textBody    string
+		expectError bool
+	}{
+		{"", "Body", "<p>Body</p>", true},
+		{"Title", "", "<p>Body</p>", true},
+		{"Title", "Body", "", true},
+		{"Title", "Body", "<p>Body</p>", false},
+	}
+
+	for _, tt := range tests {
+		err := smtpMailtrap.Send(tt.title, tt.body, tt.textBody)
+		if tt.expectError && err == nil {
+			t.Errorf("expected error got nil for title: '%s', body: '%s', textBody: '%s'", tt.title, tt.body, tt.textBody)
+		}
+		if !tt.expectError && err != nil {
+			t.Errorf("expected no error got %v for title: '%s', body: '%s', textBody: '%s'", err, tt.title, tt.body, tt.textBody)
+		}
+	}
+}
+
 func TestSMTPServer(t *testing.T) {
 	tests := []struct {
 		name        string
