@@ -12,7 +12,7 @@ var slackIntegration Slack
 var slackTimeout = 0
 var slackTimeoutIncrement = 1000
 
-func setupSlackTest(t *testing.T) Slack {
+func setupSlackTest() Slack {
 	// Initialize Slack integration from environment variables
 	slackIntegration = Slack{
 		Hook:     os.Getenv("SLACK_HOOK"),
@@ -28,7 +28,7 @@ func setupSlackTest(t *testing.T) Slack {
 }
 
 func TestSlackChannel(t *testing.T) {
-	slackIntegration := setupSlackTest(t)
+	slackIntegration := setupSlackTest()
 
 	// Message to send to the Slack channel.
 	m := models.Message{}
