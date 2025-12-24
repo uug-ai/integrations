@@ -1,19 +1,34 @@
 package integrations
 
 import (
+	"os"
 	"testing"
 	"time"
 
 	"github.com/uug-ai/models/pkg/models"
 )
 
-func TestSlackChannel(t *testing.T) {
+var slackIntegration Slack
+var slackTimeout = 0
+var slackTimeoutIncrement = 1000
 
-	// Initialize Slack integration.
-	slack := Slack{
-		Hook:     "https://hooks.slack.com/services/xxxx/xxx/xxxx",
-		Username: "UUG.AI Bot",
+func setupSlackTest(t *testing.T) Slack {
+	// Initialize Slack integration from environment variables
+	slackIntegration = Slack{
+		Hook:     os.Getenv("SLACK_HOOK"),
+		Username: os.Getenv("SLACK_USERNAME"),
 	}
+
+	// Timeout, to avoid hitting issues with Slack API.
+	slackTimeout = slackTimeout + slackTimeoutIncrement
+	tout := time.Duration(slackTimeout) * time.Millisecond
+	time.Sleep(tout)
+
+	return slackIntegration
+}
+
+func TestSlackChannel(t *testing.T) {
+	slackIntegration := setupSlackTest(t)
 
 	// Message to send to the Slack channel.
 	m := models.Message{}
@@ -28,10 +43,14 @@ func TestSlackChannel(t *testing.T) {
 	m.Media = []models.Media{}
 	m.Media = append(m.Media, models.Media{
 		StartTimestamp: 1670618365,
+		AtRuntimeMetadata: &models.MediaAtRuntimeMetadata{
+			VideoUrl:     "https://example.com/video.mp4",
+			ThumbnailUrl: "https://example.com/thumbnail.jpg",
+		},
 	})
 
 	// Send message to Slack channel.
-	err := slack.Send(m)
+	err := slackIntegration.Send(m)
 	if err != nil {
 		t.Errorf("expected error to be nil got %v", err)
 	}

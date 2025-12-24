@@ -1,0 +1,63 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "Run Tests",
+            "type": "shell",
+            "command": "export $(grep -v '^#' .env.local | xargs -d '\\n') && go test ./pkg/integrations/... -v",
+            "options": {
+                "cwd": "${workspaceFolder}"
+            },
+            "group": {
+                "kind": "test",
+                "isDefault": true
+            },
+            "presentation": {
+                "reveal": "always",
+                "panel": "new"
+            },
+            "problemMatcher": [
+                "$go"
+            ]
+        },
+        {
+            "label": "Run SMTP Tests",
+            "type": "shell",
+            "command": "export $(grep -v '^#' .env.local | xargs -d '\\n') && go test ./pkg/integrations/ -v -run SMTP",
+            "options": {
+                "cwd": "${workspaceFolder}"
+            },
+            "group": "test",
+            "presentation": {
+                "reveal": "always",
+                "panel": "new"
+            },
+            "problemMatcher": [
+                "$go"
+            ]
+        },
+        {
+            "label": "Run Single Test",
+            "type": "shell",
+            "command": "export $(grep -v '^#' .env.local | xargs -d '\\n') && go test ./pkg/integrations/ -v -run ${input:testName}",
+            "options": {
+                "cwd": "${workspaceFolder}"
+            },
+            "group": "test",
+            "presentation": {
+                "reveal": "always",
+                "panel": "new"
+            },
+            "problemMatcher": [
+                "$go"
+            ]
+        }
+    ],
+    "inputs": [
+        {
+            "id": "testName",
+            "type": "promptString",
+            "description": "Test name pattern (e.g., TestSMTPWelcome)"
+        }
+    ]
+}

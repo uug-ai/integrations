@@ -1,30 +1,37 @@
 package integrations
 
 import (
+	"os"
 	"testing"
 	"time"
 
 	"github.com/uug-ai/models/pkg/models"
 )
 
-var smtpMailtrap = SMTP{
-	Server:    "live.smtp.xxx.io",
-	Port:      "2525",
-	Username:  "smtp@xxx.io",
-	Password:  "xxx",
-	EmailFrom: "support@xxx.io",
-	EmailTo:   "to@uug.ai",
-}
+var smtpTimeout = 0
+var smtpTimeoutIncrement = 1000
 
-var timeout = 0
-var timeoutIncrement = 1000
-
-func TestSMTPWelcome(t *testing.T) {
+func setupSMTPTest(t *testing.T) SMTP {
+	// Initialize SMTP configuration from environment variables
+	smtpMailtrap := SMTP{
+		Server:    os.Getenv("SMTP_SERVER"),
+		Port:      os.Getenv("SMTP_PORT"),
+		Username:  os.Getenv("SMTP_USERNAME"),
+		Password:  os.Getenv("SMTP_PASSWORD"),
+		EmailFrom: os.Getenv("EMAIL_FROM"),
+		EmailTo:   os.Getenv("EMAIL_TO"),
+	}
 
 	// Timeout, to avoid hitting issues with SMTP servers.
-	timeout = timeout + timeoutIncrement
-	tout := time.Duration(timeout) * time.Millisecond
+	smtpTimeout = smtpTimeout + smtpTimeoutIncrement
+	tout := time.Duration(smtpTimeout) * time.Millisecond
 	time.Sleep(tout)
+
+	return smtpMailtrap
+}
+
+func TestSMTPWelcome(t *testing.T) {
+	smtpMailtrap := setupSMTPTest(t)
 
 	m := models.Message{}
 	m.Type = "message"
@@ -46,11 +53,7 @@ func TestSMTPWelcome(t *testing.T) {
 }
 
 func TestSMTPAssignTask(t *testing.T) {
-
-	// Timeout, to avoid hitting issues with SMTP servers.
-	timeout = timeout + timeoutIncrement
-	tout := time.Duration(timeout) * time.Millisecond
-	time.Sleep(tout)
+	smtpMailtrap := setupSMTPTest(t)
 
 	m := models.Message{}
 	m.Type = "message"
@@ -73,11 +76,7 @@ func TestSMTPAssignTask(t *testing.T) {
 }
 
 func TestSMTPForgot(t *testing.T) {
-
-	// Timeout, to avoid hitting issues with SMTP servers.
-	timeout = timeout + timeoutIncrement
-	tout := time.Duration(timeout) * time.Millisecond
-	time.Sleep(tout)
+	smtpMailtrap := setupSMTPTest(t)
 
 	m := models.Message{}
 	m.Type = "message"
@@ -100,11 +99,7 @@ func TestSMTPForgot(t *testing.T) {
 }
 
 func TestSMTPActivate(t *testing.T) {
-
-	// Timeout, to avoid hitting issues with SMTP servers.
-	timeout = timeout + timeoutIncrement
-	tout := time.Duration(timeout) * time.Millisecond
-	time.Sleep(tout)
+	smtpMailtrap := setupSMTPTest(t)
 
 	m := models.Message{}
 	m.Type = "message"
@@ -125,11 +120,7 @@ func TestSMTPActivate(t *testing.T) {
 }
 
 func TestSMTPDetection(t *testing.T) {
-
-	// Timeout, to avoid hitting issues with SMTP servers.
-	timeout = timeout + timeoutIncrement
-	tout := time.Duration(timeout) * time.Millisecond
-	time.Sleep(tout)
+	smtpMailtrap := setupSMTPTest(t)
 
 	m := models.Message{}
 	m.Type = "message"
@@ -151,11 +142,7 @@ func TestSMTPDetection(t *testing.T) {
 }
 
 func TestSMTPHighUpload(t *testing.T) {
-
-	// Timeout, to avoid hitting issues with SMTP servers.
-	timeout = timeout + timeoutIncrement
-	tout := time.Duration(timeout) * time.Millisecond
-	time.Sleep(tout)
+	smtpMailtrap := setupSMTPTest(t)
 
 	m := models.Message{}
 	m.Type = "message"
@@ -176,11 +163,7 @@ func TestSMTPHighUpload(t *testing.T) {
 }
 
 func TestSMTPDevice(t *testing.T) {
-
-	// Timeout, to avoid hitting issues with SMTP servers.
-	timeout = timeout + timeoutIncrement
-	tout := time.Duration(timeout) * time.Millisecond
-	time.Sleep(tout)
+	smtpMailtrap := setupSMTPTest(t)
 
 	m := models.Message{}
 	m.Type = "message"
@@ -201,11 +184,7 @@ func TestSMTPDevice(t *testing.T) {
 }
 
 func TestSMTPDisabled(t *testing.T) {
-
-	// Timeout, to avoid hitting issues with SMTP servers.
-	timeout = timeout + timeoutIncrement
-	tout := time.Duration(timeout) * time.Millisecond
-	time.Sleep(tout)
+	smtpMailtrap := setupSMTPTest(t)
 
 	m := models.Message{}
 	m.Type = "message"
@@ -227,11 +206,7 @@ func TestSMTPDisabled(t *testing.T) {
 }
 
 func TestSMTPNewIP(t *testing.T) {
-
-	// Timeout, to avoid hitting issues with SMTP servers.
-	timeout = timeout + timeoutIncrement
-	tout := time.Duration(timeout) * time.Millisecond
-	time.Sleep(tout)
+	smtpMailtrap := setupSMTPTest(t)
 
 	m := models.Message{}
 	m.Type = "message"
