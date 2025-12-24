@@ -13,14 +13,74 @@ import (
 type SMTP struct {
 	// Server is the SMTP server hostname or IP address.
 	Server    string `json:"server" validate:"required"`
-	Port      int    `json:"port" validate:"required,numeric"`
+	Port      int    `json:"port" validate:"required,gt=0"`
 	Username  string `json:"username" validate:"required"`
 	Password  string `json:"password" validate:"required"`
 	EmailFrom string `json:"email_from" validate:"required,email"`
 	EmailTo   string `json:"email_to" validate:"required,email"`
 }
 
-func (smtp SMTP) Validate() error {
+// WithSMTPServer sets the server hostname or IP address
+func WithSMTPServer(server string) Option[SMTP] {
+	return func(s *SMTP) {
+		s.Server = server
+	}
+}
+
+// WithSMTPPort sets the server port
+func WithSMTPPort(port int) Option[SMTP] {
+	return func(s *SMTP) {
+		s.Port = port
+	}
+}
+
+// WithSMTPUsername sets the SMTP authentication username
+func WithSMTPUsername(username string) Option[SMTP] {
+	return func(s *SMTP) {
+		s.Username = username
+	}
+}
+
+// WithSMTPPassword sets the SMTP authentication password
+func WithSMTPPassword(password string) Option[SMTP] {
+	return func(s *SMTP) {
+		s.Password = password
+	}
+}
+
+// WithSMTPEmailFrom sets the sender email address
+func WithSMTPEmailFrom(emailFrom string) Option[SMTP] {
+	return func(s *SMTP) {
+		s.EmailFrom = emailFrom
+	}
+}
+
+// WithSMTPEmailTo sets the recipient email address
+func WithSMTPEmailTo(emailTo string) Option[SMTP] {
+	return func(s *SMTP) {
+		s.EmailTo = emailTo
+	}
+}
+
+// CreateSMTP creates a new SMTP instance with the provided options
+func CreateSMTP(opts ...Option[SMTP]) (*SMTP, error) {
+	smtp := &SMTP{}
+
+	// Apply all options
+	for _, opt := range opts {
+		opt(smtp)
+	}
+
+	// Validate SMTP configuration
+	err := smtp.Validate()
+	if err != nil {
+		return nil, err
+	}
+
+	return smtp, nil
+}
+
+func (smtp *SMTP) Validate() error {
 	validate := validator.New()
 	err := validate.Struct(smtp)
 	if err != nil {
@@ -29,13 +89,7 @@ func (smtp SMTP) Validate() error {
 	return nil
 }
 
-func (smtp SMTP) Send(title string, body string, textBody string) (err error) {
-
-	// Validate SMTP configuration
-	err = smtp.Validate()
-	if err != nil {
-		return err
-	}
+func (smtp *SMTP) Send(title string, body string, textBody string) (err error) {
 
 	// Check if title and body are not empty
 	if title == "" {

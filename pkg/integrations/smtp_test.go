@@ -6,18 +6,17 @@ import (
 	"testing"
 )
 
-func setupSMTPTest() SMTP {
-	// Initialize SMTP configuration from environment variables
-	port, _ := strconv.ParseInt(os.Getenv("SMTP_PORT"), 10, 32)
-	smtpMailtrap := SMTP{
-		Server:    os.Getenv("SMTP_SERVER"),
-		Port:      int(port),
-		Username:  os.Getenv("SMTP_USERNAME"),
-		Password:  os.Getenv("SMTP_PASSWORD"),
-		EmailFrom: os.Getenv("EMAIL_FROM"),
-		EmailTo:   os.Getenv("EMAIL_TO"),
-	}
-	return smtpMailtrap
+func setupSMTPTest() (*SMTP, error) {
+	port, _ := strconv.Atoi(os.Getenv("SMTP_PORT"))
+	smtpMailtrap, err := CreateSMTP(
+		WithSMTPServer(os.Getenv("SMTP_SERVER")),
+		WithSMTPPort(port),
+		WithSMTPUsername(os.Getenv("SMTP_USERNAME")),
+		WithSMTPPassword(os.Getenv("SMTP_PASSWORD")),
+		WithSMTPEmailFrom(os.Getenv("EMAIL_FROM")),
+		WithSMTPEmailTo(os.Getenv("EMAIL_TO")),
+	)
+	return smtpMailtrap, err
 }
 
 func TestSMTPValidation(t *testing.T) {
@@ -87,11 +86,22 @@ func TestSMTPValidation(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			smtpMailtrap := setupSMTPTest()
-			tt.setup(&smtpMailtrap)
+			smtpMailtrap, err := setupSMTPTest()
+			if err != nil {
+				t.Fatalf("failed to setup SMTP: %v", err)
+			}
+			tt.setup(smtpMailtrap)
+
+			err = smtpMailtrap.Validate()
+			if tt.expectError && err == nil {
+				t.Errorf("expected error got nil")
+			}
+			if !tt.expectError && err != nil {
+				t.Errorf("expected error to be nil got %v", err)
+			}
 
 			// Send message to SMTP server.
-			err := smtpMailtrap.Send("Test Subject", "This is the body of the email.", "<p>This is the body of the email.</p>")
+			err = smtpMailtrap.Send("Test Subject", "This is the body of the email.", "<p>This is the body of the email.</p>")
 
 			if tt.expectError && err == nil {
 				t.Errorf("expected error got nil")
@@ -104,7 +114,11 @@ func TestSMTPValidation(t *testing.T) {
 }
 
 func TestSMTPFieldEmpty(t *testing.T) {
-	smtpMailtrap := setupSMTPTest()
+
+	smtpMailtrap, err := setupSMTPTest()
+	if err != nil {
+		t.Fatalf("failed to setup SMTP: %v", err)
+	}
 
 	tests := []struct {
 		title       string
@@ -150,7 +164,7 @@ func TestSMTPServer(t *testing.T) {
 		{
 			name: "WrongPort",
 			setup: func(s *SMTP) {
-				s.Port = 9999
+				s.Port = -100
 			},
 			expectError: true,
 		},
@@ -165,12 +179,14 @@ func TestSMTPServer(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			smtpMailtrap := setupSMTPTest()
-			tt.setup(&smtpMailtrap)
+			smtpMailtrap, err := setupSMTPTest()
+			if err != nil {
+				t.Fatalf("failed to setup SMTP: %v", err)
+			}
+			tt.setup(smtpMailtrap)
 
 			// Send message to SMTP server.
-			err := smtpMailtrap.Send("Test Subject", "This is the body of the email.", "<p>This is the body of the email.</p>")
-
+			err = smtpMailtrap.Send("Test Subject", "This is the body of the email.", "<p>This is the body of the email.</p>")
 			if tt.expectError && err == nil {
 				t.Errorf("expected error got nil")
 			}
