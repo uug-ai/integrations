@@ -40,11 +40,10 @@ func main() {
         Username: "MyBot",
     }
 
-    message := integrations.Message{
-        Body: "Hello from integrations!",
-    }
+    body := "Hello from integrations!"
+    imageUrl := "https://example.com/image.png" // Optional image URL, use empty string if not needed
 
-    err := slack.Send(message)
+    err := slack.Send(body, imageUrl)
     if err != nil {
         panic(err)
     }
@@ -73,65 +72,19 @@ func main() {
 
 ## Usage Examples
 
-### Telegram
+### Slack
 
 ```go
-telegram := integrations.Telegram{
-    Token:   "YOUR_BOT_TOKEN",
-    Channel: "YOUR_CHANNEL_ID",
+slack := integrations.Slack{
+    Hook:     "https://hooks.slack.com/services/YOUR/WEBHOOK/URL",
+    Username: "MyBot",
 }
 
-message := integrations.Message{
-    Body: "Hello from Telegram!",
-}
+// Send a text message
+err := slack.Send("Hello from Slack!", "")
 
-success := telegram.Send(message)
-```
-
-### Pushover
-
-```go
-pushover := integrations.Pushover{
-    Token: "YOUR_APP_TOKEN",
-    User:  "YOUR_USER_KEY",
-}
-
-message := integrations.Message{
-    Body: "Important notification!",
-}
-
-err := pushover.Send(message)
-```
-
-### MQTT
-
-```go
-mqtt := integrations.MQTT{
-    Broker:   "tcp://broker.hivemq.com:1883",
-    ClientID: "my-client",
-    Topic:    "my/topic",
-}
-
-message := integrations.Message{
-    Body: "IoT message",
-}
-
-err := mqtt.Send(message)
-```
-
-### Webhook
-
-```go
-webhook := integrations.Webhook{
-    URL:    "https://your-webhook-url.com/endpoint",
-    Method: "POST",
-}
-
-message := integrations.Message{
-    Body: "Webhook payload",
-}
-
-err := webhook.Send(message)
+// Send a message with an image attachment
+err := slack.Send("Check out this image!", "https://example.com/image.png")
 ```
 
 ## Project Structure
@@ -161,21 +114,20 @@ err := webhook.Send(message)
 └── README.md
 ```
 
-## Message Structure
+## Slack Configuration
 
-All integrations use a common `Message` struct:
+The Slack integration uses webhook URLs for sending messages:
 
 ```go
-type Message struct {
-    Body  string  // Message text content
-    Media []Media // Optional media attachments
-}
-
-type Media struct {
-    Url          string // Full media URL
-    ThumbnailUrl string // Thumbnail URL (if available)
+type Slack struct {
+    Hook     string // Slack webhook URL
+    Username string // Bot username to display
 }
 ```
+
+The `Send` method accepts two parameters:
+- `body` (string): The message text to send
+- `url` (string): Optional image URL to attach (use empty string if not needed)
 
 ## Configuration
 
