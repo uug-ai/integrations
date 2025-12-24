@@ -3,7 +3,6 @@ package integrations
 import (
 	"bytes"
 	"encoding/json"
-	"log"
 	"net/http"
 	"time"
 
@@ -11,27 +10,28 @@ import (
 )
 
 type Webhook struct {
-	Url string `json:"url,omitempty"`
+	Url     string `json:"url,omitempty"`
+	Timeout int    `json:"timeout,omitempty"`
 }
 
-func (webhook Webhook) Send(message models.Message) bool {
+func (webhook Webhook) Send(message models.Message) error {
 	bytesRepresentation, err := json.Marshal(message)
 	if err != nil {
-		log.Fatalln(err)
+		return err
 	}
-
 	timeout := time.Duration(5 * time.Second)
+	if webhook.Timeout > 0 {
+		timeout = time.Duration(time.Duration(webhook.Timeout) * time.Second)
+	}
 	client := http.Client{
 		Timeout: timeout,
 	}
-
 	resp, err := client.Post(webhook.Url, "application/json", bytes.NewBuffer(bytesRepresentation))
 	if err != nil {
-		log.Print(err)
-		return false
+		return err
 	} else {
 		var result map[string]interface{}
 		json.NewDecoder(resp.Body).Decode(&result)
-		return true
+		return nil
 	}
 }

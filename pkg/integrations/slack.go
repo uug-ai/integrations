@@ -2,7 +2,6 @@ package integrations
 
 import (
 	"github.com/slack-go/slack"
-	"github.com/uug-ai/models/pkg/models"
 )
 
 type Slack struct {
@@ -12,25 +11,19 @@ type Slack struct {
 	Username string `json:"username,omitempty"`
 }
 
-func (s Slack) Send(message models.Message) error {
+func (s Slack) Send(body string, url string) error {
 
 	hook := s.Hook
 	username := s.Username
 
-	url := ""
-	if len(message.Media) > 0 {
-		longUrl := message.Media[0].AtRuntimeMetadata.VideoUrl
-		url = longUrl
-	}
-
-	text := message.Body
+	text := body
 	if url != "" {
 		text = text + "\r\n" + url
 	}
 
 	attachment := slack.Attachment{
 		Color:    "good",
-		ImageURL: message.Media[0].AtRuntimeMetadata.ThumbnailUrl,
+		ImageURL: url,
 	}
 
 	msg := slack.WebhookMessage{

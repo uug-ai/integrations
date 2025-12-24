@@ -2,45 +2,71 @@ package integrations
 
 import (
 	"crypto/tls"
-	"fmt"
 	"strconv"
-	"strings"
 	"time"
 
-	"github.com/uug-ai/models/pkg/models"
+	"github.com/go-playground/validator/v10"
 	"gopkg.in/gomail.v2"
 )
 
 type SMTP struct {
-	Server     string `json:"server,omitempty"`
-	Port       string `json:"port,omitempty"`
+	Server     string `json:"server" validate:"required"`
+	Port       string `json:"port" validate:"required"`
 	Username   string `json:"username,omitempty"`
 	Password   string `json:"password,omitempty"`
-	EmailFrom  string `json:"email_from,omitempty"`
-	EmailTo    string `json:"email_to,omitempty"`
+	EmailFrom  string `json:"email_from" validate:"required,email"`
+	EmailTo    string `json:"email_to" validate:"required,email"`
 	TemplateId string `json:"template_id,omitempty"`
 }
 
-func (smtp SMTP) Send(message models.Message, body string, textBody string) error {
+func (smtp SMTP) Validate() error {
+	validate := validator.New()
+	err := validate.Struct(smtp)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (smtp SMTP) Send(title string, body string, textBody string) (err error) {
+
+	// Validate SMTP configuration
+	err = smtp.Validate()
+	if err != nil {
+		return err
+	}
+
+	// Setup gomail
 	port, _ := strconv.Atoi(smtp.Port)
 	d := gomail.NewDialer(smtp.Server, port, smtp.Username, smtp.Password)
 	d.TLSConfig = &tls.Config{InsecureSkipVerify: true}
 
+	// Check if we can dial to the server
+	_, err = d.Dial()
+	if err != nil {
+		return err
+	}
+
+	// Create the message
 	m := gomail.NewMessage()
 	m.SetHeader("From", smtp.EmailFrom)
 	m.SetHeader("To", smtp.EmailTo)
-	m.SetHeader("Subject", message.Title)
+	m.SetHeader("Subject", title)
 	timeNow := time.Now().Unix()
 	m.SetHeader("Message-Id", "<"+strconv.FormatInt(timeNow, 10)+"@kerberos.io>")
 
-	//textBody := templates.GetTextTemplate(smtp.TemplateId)
-	m.SetBody("text/plain", ReplaceValues(textBody, message))
-
+	// Replace needs to be moved outside and placed in the hub-pipeline-notification
 	//body := templates.GetTemplate(smtp.TemplateId)
-	m.AddAlternative("text/html", ReplaceValues(body, message))
+	//textBody := templates.GetTextTemplate(smtp.TemplateId)
+	// Replace variables in the template
+	//body = ReplaceValues(body, models.Message{})
+	//textBody = ReplaceValues(textBody, models.Message{})
 
-	err := d.DialAndSend(m)
-	fmt.Println(err)
+	m.SetBody("text/plain", body)
+	m.AddAlternative("text/html", textBody)
+
+	// Send the email
+	err = d.DialAndSend(m)
 	return err
 }
 
@@ -69,7 +95,7 @@ func (smtp SMTP) Send(message models.Message, body string, textBody string) erro
 // - {{numberOfMedia}}: number of media attached to the message
 // - {{dataUsage}}: data usage of the message
 
-func ReplaceValues(body string, message models.Message) string {
+/*func ReplaceValues(body string, message models.Message) string {
 
 	body = strings.ReplaceAll(body, "{{tab1_title}}", "")
 	body = strings.ReplaceAll(body, "{{tab2_title}}", "")
@@ -180,4 +206,4 @@ func ReplaceValues(body string, message models.Message) string {
 	}
 
 	return body
-}
+}*/

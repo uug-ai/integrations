@@ -1,6 +1,13 @@
 package integrations
 
-/*func TestWebhook(t *testing.T) {
+import (
+	"testing"
+	"time"
+
+	"github.com/uug-ai/models/pkg/models"
+)
+
+func TestWebhook(t *testing.T) {
 	m := models.Message{}
 	m.Type = "message"
 	m.Timestamp = int64(time.Now().Unix())
@@ -19,4 +26,4 @@ package integrations
 		Url: "http://kerberos.cloud/hook",
 	}
 	webhook.Send(m)
-}*/
+}
