@@ -1,4 +1,15 @@
 {
+    "go.testEnvVars": {
+        "LOG_LEVEL": "debug",
+        "EMAIL_FROM": "",
+        "EMAIL_TO": "",
+        "SMTP_SERVER": "",
+        "SMTP_PORT": "",
+        "SMTP_USERNAME": "",
+        "SMTP_PASSWORD": "",
+        "SLACK_HOOK": "",
+        "SLACK_USERNAME": "",
+    },
     "mdb.presetConnections": [
         {
             "name": "MongoDB Atlas Production",
@@ -6,5 +17,5 @@
         }
     ],
     "git.autofetch": true,
-    "git.enableSmartCommit": true,
+    "git.enableSmartCommit": true
 }

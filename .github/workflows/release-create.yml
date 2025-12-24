@@ -13,9 +13,9 @@ env:
 
   # GitOps variables
   GITOPS_REPO: "uug-ai/gitops"
-  GITOPS_FILE: "environments/staging/${{ github.event.repository.name }}/deployment.yaml"
-  GITOPS_KEY: ".spec.template.spec.containers[0].image"
-  GITOPS_VALUE: "ghcr.io/uug-ai/${{ github.event.repository.name }}:${{ github.event.inputs.tag || github.ref_name }}"
+  GITOPS_FILE: "environments/staging/kerberos-hub/values.yaml"
+  GITOPS_KEY: "kerberospipeline.notify.tag"
+  GITOPS_VALUE: "${{ github.event.inputs.tag || github.ref_name }}"
 
 jobs:
 
@@ -43,6 +43,7 @@ jobs:
       - name: Run Build
         run: |
           docker build -t ${{matrix.architecture}} \
+          --build-arg project=${{ env.PROJECT }} \
           --build-arg github_username=${{ secrets.USERNAME }} \
           --build-arg github_token=${{ secrets.TOKEN }} .
 
@@ -50,7 +51,6 @@ jobs:
         run: |
           docker tag ${{matrix.architecture}} ghcr.io/$ORGANIZATION/$PROJECT-platform:${{matrix.architecture}}-${{github.event.inputs.tag || github.ref_name}}
           docker push ghcr.io/$ORGANIZATION/$PROJECT-platform:${{matrix.architecture}}-${{github.event.inputs.tag || github.ref_name}}
-
 
   create-manifest:
     runs-on: ubuntu-24.04
