@@ -18,34 +18,81 @@ func setupSMTPTest() SMTP {
 	return smtpMailtrap
 }
 
-func TestValidSMTP(t *testing.T) {
-	smtpMailtrap := setupSMTPTest()
+func TestSMTPValidation(t *testing.T) {
+	tests := []struct {
+		name        string
+		setup       func(*SMTP)
+		expectError bool
+	}{
+		{
+			name: "MissingProperties",
+			setup: func(s *SMTP) {
+				s.EmailFrom = ""
+				s.EmailTo = "cedric@lol.be"
+			},
+			expectError: true,
+		},
+		{
+			name: "WrongEmail",
+			setup: func(s *SMTP) {
+				s.EmailTo = "invalid-email-address"
+			},
+			expectError: true,
+		},
+	}
 
-	// Send message to SMTP server.
-	err := smtpMailtrap.Send("Test Subject", "This is the body of the email.", "<p>This is the body of the email.</p>")
-	if err != nil {
-		t.Errorf("expected error to be nil got %v", err)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			smtpMailtrap := setupSMTPTest()
+			tt.setup(&smtpMailtrap)
+
+			// Send message to SMTP server.
+			err := smtpMailtrap.Send("Test Subject", "This is the body of the email.", "<p>This is the body of the email.</p>")
+
+			if tt.expectError && err == nil {
+				t.Errorf("expected error got nil")
+			}
+			if !tt.expectError && err != nil {
+				t.Errorf("expected error to be nil got %v", err)
+			}
+		})
 	}
 }
 
-func TestWrongEmail(t *testing.T) {
-	smtpMailtrap := setupSMTPTest()
-	smtpMailtrap.EmailTo = "invalid-email-address"
-
-	// Send message to SMTP server.
-	err := smtpMailtrap.Send("Test Subject", "This is the body of the email.", "<p>This is the body of the email.</p>")
-	if err == nil {
-		t.Errorf("expected error got nil")
+func TestSMTPServer(t *testing.T) {
+	tests := []struct {
+		name        string
+		setup       func(*SMTP)
+		expectError bool
+	}{
+		{
+			name:        "ValidSMTP",
+			setup:       func(s *SMTP) {},
+			expectError: false,
+		},
+		{
+			name: "WrongServer",
+			setup: func(s *SMTP) {
+				s.Server = "wrong.smtp.server"
+			},
+			expectError: true,
+		},
 	}
-}
 
-func TestWrongServer(t *testing.T) {
-	smtpMailtrap := setupSMTPTest()
-	smtpMailtrap.Server = "wrong.smtp.server"
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			smtpMailtrap := setupSMTPTest()
+			tt.setup(&smtpMailtrap)
 
-	// Send message to SMTP server.
-	err := smtpMailtrap.Send("Test Subject", "This is the body of the email.", "<p>This is the body of the email.</p>")
-	if err == nil {
-		t.Errorf("expected error got nil")
+			// Send message to SMTP server.
+			err := smtpMailtrap.Send("Test Subject", "This is the body of the email.", "<p>This is the body of the email.</p>")
+
+			if tt.expectError && err == nil {
+				t.Errorf("expected error got nil")
+			}
+			if !tt.expectError && err != nil {
+				t.Errorf("expected error to be nil got %v", err)
+			}
+		})
 	}
 }
