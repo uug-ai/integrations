@@ -15,6 +15,15 @@ jobs:
 
   build:
     runs-on: ${{ matrix.runner }}
+    env:
+      SLACK_HOOK: ${{ secrets.SLACK_HOOK }}
+      SLACK_USERNAME: ${{ secrets.SLACK_USERNAME }}
+      SMTP_SERVER: ${{ secrets.SMTP_SERVER }}
+      SMTP_PORT: ${{ secrets.SMTP_PORT }}
+      SMTP_USERNAME: ${{ secrets.SMTP_USERNAME }}
+      SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
+      EMAIL_FROM: ${{ secrets.EMAIL_FROM }}
+      EMAIL_TO: ${{ secrets.EMAIL_TO }}
     permissions:
       contents: write
       packages: write
