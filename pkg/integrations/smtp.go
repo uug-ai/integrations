@@ -2,6 +2,7 @@ package integrations
 
 import (
 	"crypto/tls"
+	"errors"
 	"strconv"
 	"time"
 
@@ -10,13 +11,13 @@ import (
 )
 
 type SMTP struct {
-	Server     string `json:"server" validate:"required"`
-	Port       string `json:"port" validate:"required"`
-	Username   string `json:"username,omitempty"`
-	Password   string `json:"password,omitempty"`
-	EmailFrom  string `json:"email_from" validate:"required,email"`
-	EmailTo    string `json:"email_to" validate:"required,email"`
-	TemplateId string `json:"template_id,omitempty"`
+	// Server is the SMTP server hostname or IP address.
+	Server    string `json:"server" validate:"required"`
+	Port      int    `json:"port" validate:"required,numeric"`
+	Username  string `json:"username" validate:"required"`
+	Password  string `json:"password" validate:"required"`
+	EmailFrom string `json:"email_from" validate:"required,email"`
+	EmailTo   string `json:"email_to" validate:"required,email"`
 }
 
 func (smtp SMTP) Validate() error {
@@ -36,9 +37,19 @@ func (smtp SMTP) Send(title string, body string, textBody string) (err error) {
 		return err
 	}
 
+	// Check if title and body are not empty
+	if title == "" {
+		return errors.New("empty title")
+	}
+	if body == "" {
+		return errors.New("empty body")
+	}
+	if textBody == "" {
+		return errors.New("empty text body")
+	}
+
 	// Setup gomail
-	port, _ := strconv.Atoi(smtp.Port)
-	d := gomail.NewDialer(smtp.Server, port, smtp.Username, smtp.Password)
+	d := gomail.NewDialer(smtp.Server, smtp.Port, smtp.Username, smtp.Password)
 	d.TLSConfig = &tls.Config{InsecureSkipVerify: true}
 
 	// Check if we can dial to the server

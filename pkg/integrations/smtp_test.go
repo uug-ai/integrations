@@ -2,14 +2,16 @@ package integrations
 
 import (
 	"os"
+	"strconv"
 	"testing"
 )
 
 func setupSMTPTest() SMTP {
 	// Initialize SMTP configuration from environment variables
+	port, _ := strconv.ParseInt(os.Getenv("SMTP_PORT"), 10, 32)
 	smtpMailtrap := SMTP{
 		Server:    os.Getenv("SMTP_SERVER"),
-		Port:      os.Getenv("SMTP_PORT"),
+		Port:      int(port),
 		Username:  os.Getenv("SMTP_USERNAME"),
 		Password:  os.Getenv("SMTP_PASSWORD"),
 		EmailFrom: os.Getenv("EMAIL_FROM"),
@@ -25,17 +27,59 @@ func TestSMTPValidation(t *testing.T) {
 		expectError bool
 	}{
 		{
-			name: "MissingProperties",
+			name: "MissingEmailFrom",
 			setup: func(s *SMTP) {
 				s.EmailFrom = ""
-				s.EmailTo = "cedric@lol.be"
 			},
 			expectError: true,
 		},
 		{
-			name: "WrongEmail",
+			name: "MissingEmailTo",
+			setup: func(s *SMTP) {
+				s.EmailTo = ""
+			},
+			expectError: true,
+		},
+		{
+			name: "WrongEmailTo",
 			setup: func(s *SMTP) {
 				s.EmailTo = "invalid-email-address"
+			},
+			expectError: true,
+		},
+		{
+			name: "WrongEmailFrom",
+			setup: func(s *SMTP) {
+				s.EmailFrom = "not-an-email"
+			},
+			expectError: true,
+		},
+		{
+			name: "MissingServer",
+			setup: func(s *SMTP) {
+				s.Server = ""
+			},
+			expectError: true,
+		},
+		{
+			name: "MissingPort",
+			setup: func(s *SMTP) {
+				s.Port = 0
+			},
+			expectError: true,
+		},
+		{
+			name: "NegativePort",
+			setup: func(s *SMTP) {
+				s.Port = -25
+			},
+			expectError: true,
+		},
+		{
+			name: "ValidWithoutCredentials",
+			setup: func(s *SMTP) {
+				s.Username = ""
+				s.Password = ""
 			},
 			expectError: true,
 		},
@@ -74,6 +118,20 @@ func TestSMTPServer(t *testing.T) {
 			name: "WrongServer",
 			setup: func(s *SMTP) {
 				s.Server = "wrong.smtp.server"
+			},
+			expectError: true,
+		},
+		{
+			name: "WrongPort",
+			setup: func(s *SMTP) {
+				s.Port = 9999
+			},
+			expectError: true,
+		},
+		{
+			name: "InvalidPort",
+			setup: func(s *SMTP) {
+				s.Port = 0
 			},
 			expectError: true,
 		},
