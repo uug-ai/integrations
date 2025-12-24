@@ -1,1 +1,268 @@
-# Go template
+# Integrations
+
+Universal notification and messaging integrations for Go.
+
+[![Go Version](https://img.shields.io/badge/Go-%3E%3D%201.24-007d9c?logo=go&logoColor=white)](https://go.dev/)
+[![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![Go Report Card](https://goreportcard.com/badge/github.com/uug-ai/integrations)](https://goreportcard.com/report/github.com/uug-ai/integrations)
+
+A Go library for sending notifications and messages across multiple platforms and services with a unified interface.
+
+## Features
+
+- 15+ integrations for popular messaging and notification services
+- Unified interface across all integrations
+- Type safe with full Go type safety and compile-time checks
+- Comprehensive test coverage
+- MongoDB support
+- OpenTelemetry observability and tracing support
+
+## Installation
+
+```bash
+go get github.com/uug-ai/integrations
+```
+
+## Quick Start
+
+```go
+package main
+
+import (
+    "github.com/uug-ai/integrations/pkg/integrations"
+)
+
+func main() {
+    // Slack example
+    slack := integrations.Slack{
+        Hook:     "https://hooks.slack.com/services/YOUR/WEBHOOK/URL",
+        Username: "MyBot",
+    }
+
+    message := integrations.Message{
+        Body: "Hello from integrations!",
+    }
+
+    err := slack.Send(message)
+    if err != nil {
+        panic(err)
+    }
+}
+```
+
+## Supported Integrations
+
+| Integration | Description | Status |
+|-------------|-------------|--------|
+| **Slack** | Send messages to Slack channels | Ready |
+| **Telegram** | Send messages via Telegram Bot API | Ready |
+| **Webhook** | Generic HTTP webhooks | Ready |
+| **SMTP** | Email via SMTP | Ready |
+| **SendGrid** | Email via SendGrid API | Ready |
+| **Pushover** | Push notifications to mobile devices | Ready |
+| **Pushbullet** | Push notifications and file sharing | Ready |
+| **Pusher** | Real-time messaging via Pusher | Ready |
+| **MQTT** | IoT messaging protocol | Ready |
+| **Alexa** | Amazon Alexa notifications | Ready |
+| **IFTTT** | If This Then That automation | Ready |
+| **Twitter** | Tweet updates (via Twitter API) | Ready |
+| **SMS** | SMS via Twilio | Ready |
+| **Mail** | Email via Mailgun | Ready |
+| **MongoDB** | Database storage integration | Ready |
+
+## Usage Examples
+
+### Telegram
+
+```go
+telegram := integrations.Telegram{
+    Token:   "YOUR_BOT_TOKEN",
+    Channel: "YOUR_CHANNEL_ID",
+}
+
+message := integrations.Message{
+    Body: "Hello from Telegram!",
+}
+
+success := telegram.Send(message)
+```
+
+### Pushover
+
+```go
+pushover := integrations.Pushover{
+    Token: "YOUR_APP_TOKEN",
+    User:  "YOUR_USER_KEY",
+}
+
+message := integrations.Message{
+    Body: "Important notification!",
+}
+
+err := pushover.Send(message)
+```
+
+### MQTT
+
+```go
+mqtt := integrations.MQTT{
+    Broker:   "tcp://broker.hivemq.com:1883",
+    ClientID: "my-client",
+    Topic:    "my/topic",
+}
+
+message := integrations.Message{
+    Body: "IoT message",
+}
+
+err := mqtt.Send(message)
+```
+
+### Webhook
+
+```go
+webhook := integrations.Webhook{
+    URL:    "https://your-webhook-url.com/endpoint",
+    Method: "POST",
+}
+
+message := integrations.Message{
+    Body: "Webhook payload",
+}
+
+err := webhook.Send(message)
+```
+
+## Project Structure
+
+```
+.
+├── pkg/
+│   └── integrations/        # Core integration implementations
+│       ├── alexa.go
+│       ├── ifttt.go
+│       ├── mail.go
+│       ├── message.go       # Message struct definition
+│       ├── mongodb.go
+│       ├── mqtt.go
+│       ├── pushbullet.go
+│       ├── pusher.go
+│       ├── pushover.go
+│       ├── sendgrid.go
+│       ├── slack.go
+│       ├── sms.go
+│       ├── smtp.go
+│       ├── telegram.go
+│       ├── twitter.go
+│       └── webhook.go
+├── main.go
+├── go.mod
+└── README.md
+```
+
+## Message Structure
+
+All integrations use a common `Message` struct:
+
+```go
+type Message struct {
+    Body  string  // Message text content
+    Media []Media // Optional media attachments
+}
+
+type Media struct {
+    Url          string // Full media URL
+    ThumbnailUrl string // Thumbnail URL (if available)
+}
+```
+
+## Configuration
+
+Each integration has its own configuration struct. Check the individual integration files in `pkg/integrations/` for specific configuration options.
+
+### Environment Variables
+
+Many integrations support configuration via environment variables:
+
+```bash
+# Slack
+export SLACK_WEBHOOK_URL="https://hooks.slack.com/services/..."
+
+# Telegram
+export TELEGRAM_BOT_TOKEN="your_token"
+export TELEGRAM_CHANNEL_ID="your_channel"
+
+# Pushover
+export PUSHOVER_TOKEN="your_app_token"
+export PUSHOVER_USER="your_user_key"
+```
+
+## Testing
+
+Run the test suite:
+
+```bash
+go test ./...
+```
+
+Run tests with coverage:
+
+```bash
+go test -cover ./...
+```
+
+Run tests for a specific integration:
+
+```bash
+go test ./pkg/integrations -run TestSlack
+```
+
+## Contributing
+
+Contributions are welcome. To contribute:
+
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feat/amazing-feature`)
+3. Commit your changes following [Conventional Commits](https://www.conventionalcommits.org/)
+4. Push to your branch (`git push origin feat/amazing-feature`)
+5. Open a Pull Request
+
+### Commit Message Format
+
+```
+<type>[optional scope]: <description>
+
+[optional body]
+
+[optional footer(s)]
+```
+
+**Types:** `feat`, `fix`, `docs`, `style`, `refactor`, `perf`, `test`, `build`, `ci`, `chore`
+
+**Examples:**
+```
+feat(telegram): add support for inline keyboards
+fix(slack): correct webhook payload formatting
+docs(readme): update usage examples
+```
+
+## License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## Acknowledgments
+
+This project uses the following libraries:
+
+- [slack-go/slack](https://github.com/slack-go/slack) - Slack API in Go
+- [telegram-bot-api](https://github.com/go-telegram-bot-api/telegram-bot-api) - Telegram Bot API
+- [sendgrid-go](https://github.com/sendgrid/sendgrid-go) - SendGrid email API
+- [mongo-driver](https://github.com/mongodb/mongo-go-driver) - MongoDB driver
+- [paho.mqtt.golang](https://github.com/eclipse/paho.mqtt.golang) - MQTT client
+
+See [go.mod](go.mod) for the complete list of dependencies.
+
+## Support
+
+- Issues: [GitHub Issues](https://github.com/uug-ai/integrations/issues)
+- Discussions: [GitHub Discussions](https://github.com/uug-ai/integrations/discussions)
