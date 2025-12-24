@@ -5,6 +5,7 @@ Universal notification and messaging integrations for Go.
 [![Go Version](https://img.shields.io/badge/Go-%3E%3D%201.24-007d9c?logo=go&logoColor=white)](https://go.dev/)
 [![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Go Report Card](https://goreportcard.com/badge/github.com/uug-ai/integrations)](https://goreportcard.com/report/github.com/uug-ai/integrations)
+[![codecov](https://codecov.io/gh/uug-ai/integrations/graph/badge.svg?token=BOInBI4j2N)](https://codecov.io/gh/uug-ai/integrations)
 
 A Go library for sending notifications and messages across multiple platforms and services with a unified interface.
 
