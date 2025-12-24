@@ -4,6 +4,9 @@ on:
     types: [opened, synchronize, reopened]
   release:
     types: [created]
+  push:
+    branches:
+      - main
 
 env:
   ORGANIZATION: uug-ai
