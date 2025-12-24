@@ -14,8 +14,6 @@ type Slack struct {
 
 func (s Slack) Send(message models.Message) error {
 
-	//token := s.Token
-	//channelName := s.Channel
 	hook := s.Hook
 	username := s.Username
 
@@ -23,11 +21,6 @@ func (s Slack) Send(message models.Message) error {
 	if len(message.Media) > 0 {
 		longUrl := message.Media[0].AtRuntimeMetadata.VideoUrl
 		url = longUrl
-		/*provider := "tinyurl"
-		shortenedUrl, err := shorturl.Shorten(longUrl, provider)
-		if err == nil {
-			url = string(shortenedUrl)
-		}*/
 	}
 
 	text := message.Body

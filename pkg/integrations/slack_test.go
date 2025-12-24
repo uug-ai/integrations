@@ -8,6 +8,14 @@ import (
 )
 
 func TestSlackChannel(t *testing.T) {
+
+	// Initialize Slack integration.
+	slack := Slack{
+		Hook:     "https://hooks.slack.com/services/xxxx/xxx/xxxx",
+		Username: "UUG.AI Bot",
+	}
+
+	// Message to send to the Slack channel.
 	m := models.Message{}
 	m.Type = "message"
 	m.Timestamp = int64(time.Now().Unix())
@@ -22,14 +30,7 @@ func TestSlackChannel(t *testing.T) {
 		StartTimestamp: 1670618365,
 	})
 
-	// Get User notification channels.
-	// ....
-
-	// Send message to all channels.
-	slack := Slack{
-		Hook:     "https://hooks.slack.com/services/xxxx/xxx/xxxx",
-		Username: "UUG.AI Bot",
-	}
+	// Send message to Slack channel.
 	err := slack.Send(m)
 	if err != nil {
 		t.Errorf("expected error to be nil got %v", err)
