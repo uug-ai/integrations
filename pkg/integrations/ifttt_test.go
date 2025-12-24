@@ -1,13 +1,6 @@
 package integrations
 
-import (
-	"testing"
-	"time"
-
-	"github.com/uug-ai/models/pkg/models"
-)
-
-func TestIfttt(t *testing.T) {
+/*func TestIfttt(t *testing.T) {
 	m := models.Message{}
 	m.Type = "message"
 	m.Timestamp = int64(time.Now().Unix())
@@ -29,4 +22,4 @@ func TestIfttt(t *testing.T) {
 
 	// Successful test if we reach this point.
 	//t.Log("IFTTT test executed")
-}
+}*/

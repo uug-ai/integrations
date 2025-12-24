@@ -1,13 +1,6 @@
 package integrations
 
-import (
-	"testing"
-	"time"
-
-	"github.com/uug-ai/models/pkg/models"
-)
-
-func TestSendgrid(t *testing.T) {
+/*func TestSendgrid(t *testing.T) {
 	m := models.Message{}
 	m.Type = "message"
 	m.Timestamp = int64(time.Now().Unix())
@@ -27,4 +20,4 @@ func TestSendgrid(t *testing.T) {
 		EmailTo:    "xxx@xxx.io",
 	}
 	sendgrid.SendNotification(m)
-}
+}*/

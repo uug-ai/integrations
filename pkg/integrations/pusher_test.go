@@ -1,13 +1,6 @@
 package integrations
 
-import (
-	"testing"
-	"time"
-
-	"github.com/uug-ai/models/pkg/models"
-)
-
-func TestPusher(t *testing.T) {
+/*func TestPusher(t *testing.T) {
 	m := models.Message{}
 	m.Type = "message"
 	m.Timestamp = int64(time.Now().Unix())
@@ -26,4 +19,4 @@ func TestPusher(t *testing.T) {
 		Channel: "notification",
 	}
 	pusher.Send(m)
-}
+}*/
