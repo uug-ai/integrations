@@ -16,6 +16,15 @@ env:
 jobs:
   test-coverage:
     runs-on: ubuntu-latest
+    env:
+      SLACK_HOOK: ${{ secrets.SLACK_HOOK }}
+      SLACK_USERNAME: ${{ secrets.SLACK_USERNAME }}
+      SMTP_SERVER: ${{ secrets.SMTP_SERVER }}
+      SMTP_PORT: ${{ secrets.SMTP_PORT }}
+      SMTP_USERNAME: ${{ secrets.SMTP_USERNAME }}
+      SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
+      EMAIL_FROM: ${{ secrets.EMAIL_FROM }}
+      EMAIL_TO: ${{ secrets.EMAIL_TO }}
     steps:
       # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
       - name: Checkout repository
@@ -29,15 +38,6 @@ jobs:
             go.sum
       # Test the Golang application
       - name: Test Golang application
-        env:
-          SLACK_HOOK: ${{ secrets.SLACK_HOOK }}
-          SLACK_USERNAME: ${{ secrets.SLACK_USERNAME }}
-          SMTP_SERVER: ${{ secrets.SMTP_SERVER }}
-          SMTP_PORT: ${{ secrets.SMTP_PORT }}
-          SMTP_USERNAME: ${{ secrets.SMTP_USERNAME }}
-          SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
-          EMAIL_FROM: ${{ secrets.EMAIL_FROM }}
-          EMAIL_TO: ${{ secrets.EMAIL_TO }}
         run: |
           git config --global url."https://${{ secrets.USERNAME }}:${{ secrets.TOKEN }}@github.com/".insteadOf "https://github.com/"
           go fmt $(go list ./... | grep -v /vendor/)
@@ -45,15 +45,6 @@ jobs:
           go test -race $(go list ./... | grep -v /vendor/)
       # Print out test coverage
       - name: Print test coverage
-        env:
-          SLACK_HOOK: ${{ secrets.SLACK_HOOK }}
-          SLACK_USERNAME: ${{ secrets.SLACK_USERNAME }}
-          SMTP_SERVER: ${{ secrets.SMTP_SERVER }}
-          SMTP_PORT: ${{ secrets.SMTP_PORT }}
-          SMTP_USERNAME: ${{ secrets.SMTP_USERNAME }}
-          SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
-          EMAIL_FROM: ${{ secrets.EMAIL_FROM }}
-          EMAIL_TO: ${{ secrets.EMAIL_TO }}
         run: |
           go test -coverprofile=coverage.out $(go list ./... | grep -v /vendor/)
           go tool cover -func=coverage.out
