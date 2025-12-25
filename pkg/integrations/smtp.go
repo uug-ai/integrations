@@ -10,6 +10,34 @@ import (
 	"gopkg.in/gomail.v2"
 )
 
+// MailDialer is an interface for sending emails
+type MailDialer interface {
+	DialAndSend(m ...*gomail.Message) error
+	Dial() (gomail.SendCloser, error)
+}
+
+// GomailDialer wraps gomail.Dialer to implement MailDialer interface
+type GomailDialer struct {
+	dialer *gomail.Dialer
+}
+
+// NewGomailDialer creates a new GomailDialer with the provided SMTP settings
+func NewGomailDialer(host string, port int, username, password string) MailDialer {
+	d := gomail.NewDialer(host, port, username, password)
+	d.TLSConfig = &tls.Config{InsecureSkipVerify: true}
+	return &GomailDialer{dialer: d}
+}
+
+// DialAndSend implements MailDialer interface
+func (g *GomailDialer) DialAndSend(m ...*gomail.Message) error {
+	return g.dialer.DialAndSend(m...)
+}
+
+// Dial implements MailDialer interface
+func (g *GomailDialer) Dial() (gomail.SendCloser, error) {
+	return g.dialer.Dial()
+}
+
 // SMTPOptions holds the configuration for SMTP
 type SMTPOptions struct {
 	Server    string `validate:"required"`
@@ -32,38 +60,38 @@ func NewSMTPOptions() *SMTPOptionsBuilder {
 	}
 }
 
-// Server sets the SMTP server hostname or IP address
-func (b *SMTPOptionsBuilder) Server(server string) *SMTPOptionsBuilder {
+// SetServer sets the SMTP server hostname or IP address
+func (b *SMTPOptionsBuilder) SetServer(server string) *SMTPOptionsBuilder {
 	b.options.Server = server
 	return b
 }
 
-// Port sets the SMTP server port
-func (b *SMTPOptionsBuilder) Port(port int) *SMTPOptionsBuilder {
+// SetPort sets the SMTP server port
+func (b *SMTPOptionsBuilder) SetPort(port int) *SMTPOptionsBuilder {
 	b.options.Port = port
 	return b
 }
 
-// Username sets the SMTP authentication username
-func (b *SMTPOptionsBuilder) Username(username string) *SMTPOptionsBuilder {
+// SetUsername sets the SMTP authentication username
+func (b *SMTPOptionsBuilder) SetUsername(username string) *SMTPOptionsBuilder {
 	b.options.Username = username
 	return b
 }
 
-// Password sets the SMTP authentication password
-func (b *SMTPOptionsBuilder) Password(password string) *SMTPOptionsBuilder {
+// SetPassword sets the SMTP authentication password
+func (b *SMTPOptionsBuilder) SetPassword(password string) *SMTPOptionsBuilder {
 	b.options.Password = password
 	return b
 }
 
-// From sets the sender email address
-func (b *SMTPOptionsBuilder) From(emailFrom string) *SMTPOptionsBuilder {
+// SetFrom sets the sender email address
+func (b *SMTPOptionsBuilder) SetFrom(emailFrom string) *SMTPOptionsBuilder {
 	b.options.EmailFrom = emailFrom
 	return b
 }
 
-// To sets the recipient email address
-func (b *SMTPOptionsBuilder) To(emailTo string) *SMTPOptionsBuilder {
+// SetTo sets the recipient email address
+func (b *SMTPOptionsBuilder) SetTo(emailTo string) *SMTPOptionsBuilder {
 	b.options.EmailTo = emailTo
 	return b
 }
@@ -76,10 +104,12 @@ func (b *SMTPOptionsBuilder) Build() *SMTPOptions {
 // SMTP represents an SMTP client instance
 type SMTP struct {
 	options *SMTPOptions
+	dialer  MailDialer
 }
 
 // NewSMTP creates a new SMTP client with the provided options
-func NewSMTP(opts *SMTPOptions) (*SMTP, error) {
+// If dialer is nil, a default GomailDialer will be created
+func NewSMTP(opts *SMTPOptions, dialer MailDialer) (*SMTP, error) {
 	// Validate SMTP configuration
 	validate := validator.New()
 	err := validate.Struct(opts)
@@ -87,8 +117,14 @@ func NewSMTP(opts *SMTPOptions) (*SMTP, error) {
 		return nil, err
 	}
 
+	// If no dialer provided, create default production dialer
+	if dialer == nil {
+		dialer = NewGomailDialer(opts.Server, opts.Port, opts.Username, opts.Password)
+	}
+
 	return &SMTP{
 		options: opts,
+		dialer:  dialer,
 	}, nil
 }
 
@@ -105,12 +141,8 @@ func (s *SMTP) Send(title string, body string, textBody string) (err error) {
 		return errors.New("empty text body")
 	}
 
-	// Setup gomail
-	d := gomail.NewDialer(s.options.Server, s.options.Port, s.options.Username, s.options.Password)
-	d.TLSConfig = &tls.Config{InsecureSkipVerify: true}
-
 	// Check if we can dial to the server
-	_, err = d.Dial()
+	_, err = s.dialer.Dial()
 	if err != nil {
 		return err
 	}
@@ -134,7 +166,7 @@ func (s *SMTP) Send(title string, body string, textBody string) (err error) {
 	m.AddAlternative("text/html", textBody)
 
 	// Send the email
-	err = d.DialAndSend(m)
+	err = s.dialer.DialAndSend(m)
 	return err
 }
 
