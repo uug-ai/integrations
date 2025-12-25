@@ -258,6 +258,7 @@ func TestSMTPSendWithMock(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+
 			// Create mock dialer
 			mockDialer := &MockMailDialer{
 				DialFunc: func() (gomail.SendCloser, error) {
@@ -333,7 +334,7 @@ func TestSMTPFieldEmpty(t *testing.T) {
 	}
 }
 
-func TestSMTPServer(t *testing.T) {
+func TestIntegrationSMTPServer(t *testing.T) {
 	tests := []struct {
 		name        string
 		buildOpts   func() *SMTPOptions
@@ -404,7 +405,7 @@ func TestSMTPServer(t *testing.T) {
 			opts := tt.buildOpts()
 
 			// Try to create SMTP client
-			smtpClient, err := NewSMTP(opts, nil) // nil uses default production dialer
+			smtpClient, err := NewSMTP(opts) // no dialer uses default production dialer
 
 			// For validation errors, check client creation
 			if tt.expectError && tt.name != "ValidSMTP" && tt.name != "WrongServer" {

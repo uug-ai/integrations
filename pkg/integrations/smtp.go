@@ -108,8 +108,8 @@ type SMTP struct {
 }
 
 // NewSMTP creates a new SMTP client with the provided options
-// If dialer is nil, a default GomailDialer will be created
-func NewSMTP(opts *SMTPOptions, dialer MailDialer) (*SMTP, error) {
+// If dialer is not provided, a default GomailDialer will be created
+func NewSMTP(opts *SMTPOptions, dialer ...MailDialer) (*SMTP, error) {
 	// Validate SMTP configuration
 	validate := validator.New()
 	err := validate.Struct(opts)
@@ -118,13 +118,16 @@ func NewSMTP(opts *SMTPOptions, dialer MailDialer) (*SMTP, error) {
 	}
 
 	// If no dialer provided, create default production dialer
-	if dialer == nil {
-		dialer = NewGomailDialer(opts.Server, opts.Port, opts.Username, opts.Password)
+	var d MailDialer
+	if len(dialer) == 0 {
+		d = NewGomailDialer(opts.Server, opts.Port, opts.Username, opts.Password)
+	} else {
+		d = dialer[0]
 	}
 
 	return &SMTP{
 		options: opts,
-		dialer:  dialer,
+		dialer:  d,
 	}, nil
 }
 
