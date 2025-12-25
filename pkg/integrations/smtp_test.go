@@ -9,15 +9,15 @@ import (
 	"gopkg.in/gomail.v2"
 )
 
-// MockMailDialer is a mock implementation of MailDialer for testing
-type MockMailDialer struct {
+// MockMailClient is a mock implementation of MailClient for testing
+type MockMailClient struct {
 	DialAndSendFunc func(m ...*gomail.Message) error
 	DialFunc        func() (gomail.SendCloser, error)
 	DialCalled      bool
 	SendCalled      bool
 }
 
-func (m *MockMailDialer) DialAndSend(msgs ...*gomail.Message) error {
+func (m *MockMailClient) DialAndSend(msgs ...*gomail.Message) error {
 	m.SendCalled = true
 	if m.DialAndSendFunc != nil {
 		return m.DialAndSendFunc(msgs...)
@@ -25,7 +25,7 @@ func (m *MockMailDialer) DialAndSend(msgs ...*gomail.Message) error {
 	return nil
 }
 
-func (m *MockMailDialer) Dial() (gomail.SendCloser, error) {
+func (m *MockMailClient) Dial() (gomail.SendCloser, error) {
 	m.DialCalled = true
 	if m.DialFunc != nil {
 		return m.DialFunc()
@@ -43,13 +43,13 @@ func setupSMTPTest() (*SMTP, error) {
 		SetTo(os.Getenv("EMAIL_TO")).
 		Build()
 
-	smtp, err := NewSMTP(opts, nil) // nil uses default production dialer
+	smtp, err := NewSMTP(opts, nil) // nil uses default production client
 	return smtp, err
 }
 
 func TestSMTPValidation(t *testing.T) {
-	// Use mock dialer to avoid actual network calls
-	mockDialer := &MockMailDialer{}
+	// Use mock client to avoid actual network calls
+	mockClient := &MockMailClient{}
 
 	tests := []struct {
 		name        string
@@ -175,7 +175,7 @@ func TestSMTPValidation(t *testing.T) {
 			opts := tt.buildOpts()
 
 			// Try to create SMTP client - validation happens here
-			_, err := NewSMTP(opts, mockDialer)
+			_, err := NewSMTP(opts, mockClient)
 
 			if tt.expectError && err == nil {
 				t.Errorf("expected error got nil")
@@ -259,8 +259,8 @@ func TestSMTPSendWithMock(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 
-			// Create mock dialer
-			mockDialer := &MockMailDialer{
+			// Create mock client
+			mockClient := &MockMailClient{
 				DialFunc: func() (gomail.SendCloser, error) {
 					return nil, tt.dialError
 				},
@@ -279,7 +279,7 @@ func TestSMTPSendWithMock(t *testing.T) {
 				SetTo("to@test.com").
 				Build()
 
-			smtp, err := NewSMTP(opts, mockDialer)
+			smtp, err := NewSMTP(opts, mockClient)
 			if err != nil {
 				t.Fatalf("failed to create SMTP client: %v", err)
 			}
@@ -294,19 +294,30 @@ func TestSMTPSendWithMock(t *testing.T) {
 				t.Errorf("expected no error got %v", err)
 			}
 
-			if mockDialer.DialCalled != tt.expectDial {
-				t.Errorf("expected Dial called=%v, got=%v", tt.expectDial, mockDialer.DialCalled)
+			if mockClient.DialCalled != tt.expectDial {
+				t.Errorf("expected Dial called=%v, got=%v", tt.expectDial, mockClient.DialCalled)
 			}
 
-			if mockDialer.SendCalled != tt.expectSend {
-				t.Errorf("expected Send called=%v, got=%v", tt.expectSend, mockDialer.SendCalled)
+			if mockClient.SendCalled != tt.expectSend {
+				t.Errorf("expected Send called=%v, got=%v", tt.expectSend, mockClient.SendCalled)
 			}
 		})
 	}
 }
 func TestSMTPFieldEmpty(t *testing.T) {
+	// Use mock client to avoid actual network calls
+	mockClient := &MockMailClient{}
 
-	smtpMailtrap, err := setupSMTPTest()
+	opts := NewSMTPOptions().
+		SetServer("smtp.test.com").
+		SetPort(587).
+		SetUsername("user").
+		SetPassword("pass").
+		SetFrom("from@test.com").
+		SetTo("to@test.com").
+		Build()
+
+	smtpClient, err := NewSMTP(opts, mockClient)
 	if err != nil {
 		t.Fatalf("failed to setup SMTP: %v", err)
 	}
@@ -317,19 +328,24 @@ func TestSMTPFieldEmpty(t *testing.T) {
 		textBody    string
 		expectError bool
 	}{
-		{"", "Body", "<p>Body</p>", true},
-		{"Title", "", "<p>Body</p>", true},
-		{"Title", "Body", "", true},
-		{"Title", "Body", "<p>Body</p>", false},
+		{title: "", body: "Body", textBody: "<p>Body</p>", expectError: true},
+		{title: "Title", body: "", textBody: "<p>Body</p>", expectError: true},
+		{title: "Title", body: "Body", textBody: "", expectError: true},
+		{title: "Title", body: "Body", textBody: "<p>Body</p>", expectError: false},
 	}
 
 	for _, tt := range tests {
-		err := smtpMailtrap.Send(tt.title, tt.body, tt.textBody)
+		mockClient.DialCalled = false
+		mockClient.SendCalled = false
+		err := smtpClient.Send(tt.title, tt.body, tt.textBody)
 		if tt.expectError && err == nil {
 			t.Errorf("expected error got nil for title: '%s', body: '%s', textBody: '%s'", tt.title, tt.body, tt.textBody)
 		}
 		if !tt.expectError && err != nil {
 			t.Errorf("expected no error got %v for title: '%s', body: '%s', textBody: '%s'", err, tt.title, tt.body, tt.textBody)
+		}
+		if !tt.expectError && !mockClient.DialCalled {
+			t.Errorf("expected Dial to be called but it wasn't")
 		}
 	}
 }

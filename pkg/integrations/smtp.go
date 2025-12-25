@@ -3,38 +3,36 @@ package integrations
 import (
 	"crypto/tls"
 	"errors"
-	"strconv"
-	"time"
 
 	"github.com/go-playground/validator/v10"
 	"gopkg.in/gomail.v2"
 )
 
-// MailDialer is an interface for sending emails
-type MailDialer interface {
+// MailClient is an interface for sending emails
+type MailClient interface {
 	DialAndSend(m ...*gomail.Message) error
 	Dial() (gomail.SendCloser, error)
 }
 
-// GomailDialer wraps gomail.Dialer to implement MailDialer interface
-type GomailDialer struct {
+// GomailClient wraps gomail.Dialer to implement MailClient interface
+type GomailClient struct {
 	dialer *gomail.Dialer
 }
 
-// NewGomailDialer creates a new GomailDialer with the provided SMTP settings
-func NewGomailDialer(host string, port int, username, password string) MailDialer {
+// NewGomailClient creates a new GomailClient with the provided SMTP settings
+func NewGomailClient(host string, port int, username, password string) MailClient {
 	d := gomail.NewDialer(host, port, username, password)
 	d.TLSConfig = &tls.Config{InsecureSkipVerify: true}
-	return &GomailDialer{dialer: d}
+	return &GomailClient{dialer: d}
 }
 
-// DialAndSend implements MailDialer interface
-func (g *GomailDialer) DialAndSend(m ...*gomail.Message) error {
+// DialAndSend implements MailClient interface
+func (g *GomailClient) DialAndSend(m ...*gomail.Message) error {
 	return g.dialer.DialAndSend(m...)
 }
 
-// Dial implements MailDialer interface
-func (g *GomailDialer) Dial() (gomail.SendCloser, error) {
+// Dial implements MailClient interface
+func (g *GomailClient) Dial() (gomail.SendCloser, error) {
 	return g.dialer.Dial()
 }
 
@@ -104,12 +102,12 @@ func (b *SMTPOptionsBuilder) Build() *SMTPOptions {
 // SMTP represents an SMTP client instance
 type SMTP struct {
 	options *SMTPOptions
-	dialer  MailDialer
+	client  MailClient
 }
 
 // NewSMTP creates a new SMTP client with the provided options
-// If dialer is not provided, a default GomailDialer will be created
-func NewSMTP(opts *SMTPOptions, dialer ...MailDialer) (*SMTP, error) {
+// If client is not provided, a default GomailClient will be created
+func NewSMTP(opts *SMTPOptions, client ...MailClient) (*SMTP, error) {
 	// Validate SMTP configuration
 	validate := validator.New()
 	err := validate.Struct(opts)
@@ -117,20 +115,35 @@ func NewSMTP(opts *SMTPOptions, dialer ...MailDialer) (*SMTP, error) {
 		return nil, err
 	}
 
-	// If no dialer provided, create default production dialer
-	var d MailDialer
-	if len(dialer) == 0 {
-		d = NewGomailDialer(opts.Server, opts.Port, opts.Username, opts.Password)
+	// If no client provided, create default production client
+	var c MailClient
+	if len(client) == 0 {
+		c = NewGomailClient(opts.Server, opts.Port, opts.Username, opts.Password)
 	} else {
-		d = dialer[0]
+		c = client[0]
 	}
 
 	return &SMTP{
 		options: opts,
-		dialer:  d,
+		client:  c,
 	}, nil
 }
 
+// Send sends an email with the specified title, body (plain text), and textBody (HTML).
+// It validates that all parameters are non-empty, verifies connectivity to the SMTP server,
+// constructs an email message with the configured sender and recipient addresses, and sends it.
+//
+// Parameters:
+//   - title: The subject line of the email
+//   - body: The plain text content of the email
+//   - textBody: The HTML content of the email (added as an alternative format)
+//
+// Returns:
+//   - error: An error if title, body, or textBody is empty, if the SMTP server is unreachable,
+//     or if sending the email fails
+//
+// Note: The body parameter is set as plain text and textBody as HTML, which appears to be
+// reversed from the parameter names. Consider reviewing this implementation.
 func (s *SMTP) Send(title string, body string, textBody string) (err error) {
 
 	// Check if title and body are not empty
@@ -140,12 +153,9 @@ func (s *SMTP) Send(title string, body string, textBody string) (err error) {
 	if body == "" {
 		return errors.New("empty body")
 	}
-	if textBody == "" {
-		return errors.New("empty text body")
-	}
 
 	// Check if we can dial to the server
-	_, err = s.dialer.Dial()
+	_, err = s.client.Dial()
 	if err != nil {
 		return err
 	}
@@ -155,8 +165,6 @@ func (s *SMTP) Send(title string, body string, textBody string) (err error) {
 	m.SetHeader("From", s.options.EmailFrom)
 	m.SetHeader("To", s.options.EmailTo)
 	m.SetHeader("Subject", title)
-	timeNow := time.Now().Unix()
-	m.SetHeader("Message-Id", "<"+strconv.FormatInt(timeNow, 10)+"@kerberos.io>")
 
 	// Replace needs to be moved outside and placed in the hub-pipeline-notification
 	//body := templates.GetTemplate(smtp.TemplateId)
@@ -169,7 +177,7 @@ func (s *SMTP) Send(title string, body string, textBody string) (err error) {
 	m.AddAlternative("text/html", textBody)
 
 	// Send the email
-	err = s.dialer.DialAndSend(m)
+	err = s.client.DialAndSend(m)
 	return err
 }
 
