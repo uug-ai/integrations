@@ -12,7 +12,7 @@ A Go library for sending notifications and messages across multiple platforms an
 ## Features
 
 - 15+ integrations for popular messaging and notification services
-- Functional options pattern for flexible configuration
+- Fluent builder pattern for clean, readable configuration
 - Built-in validation with compile-time type safety
 - Comprehensive test coverage
 - MongoDB support
@@ -35,17 +35,28 @@ import (
 )
 
 func main() {
-    // Create a Slack integration using the functional options pattern
-    slack, err := integrations.CreateSlack(
-        integrations.WithSlackHook("https://hooks.slack.com/services/YOUR/WEBHOOK/URL"),
-        integrations.WithSlackUsername("MyBot"),
-    )
+    // Build SMTP options
+    opts := integrations.NewSMTPOptions().
+        Server("smtp.gmail.com").
+        Port(587).
+        Username("your-email@gmail.com").
+        Password("your-app-password").
+        From("sender@example.com").
+        To("recipient@example.com").
+        Build()
+
+    // Create SMTP client with options
+    smtp, err := integrations.NewSMTP(opts)
     if err != nil {
         log.Fatal(err)
     }
 
-    // Send a message
-    err = slack.Send("Hello from integrations!", "")
+    // Send an email
+    err = smtp.Send(
+        "Email Subject",
+        "Plain text body",
+        "<h1>HTML body</h1>",
+    )
     if err != nil {
         log.Fatal(err)
     }
@@ -74,27 +85,30 @@ func main() {
 
 ## Core Concepts
 
-### Functional Options Pattern
+### Options Builder Pattern
 
-All integrations use the functional options pattern for configuration. This provides:
-- **Flexibility**: Configure only what you need
-- **Validation**: Built-in validation before use
+All integrations use the options builder pattern (similar to MongoDB's driver). This provides:
+- **Clean Syntax**: Build options separately, then pass to constructor
+- **Readability**: Self-documenting method chains
+- **Separation of Concerns**: Options building is separate from client creation
+- **Validation**: Built-in validation when creating the client
 - **Type Safety**: Compile-time type checking
-- **Extensibility**: Easy to add new options
+- **Flexibility**: Configure only what you need
 
 ### Creating Integrations
 
 Each integration follows this pattern:
 
-1. **Create** the integration using a `Create<Integration>()` function with functional options
-2. **Validate** configuration automatically during creation
-3. **Send** messages using the `Send()` method
+1. **Build Options** using `integrations.New<Integration>Options()` with method chaining
+2. **Call** `.Build()` to get the options object
+3. **Create Client** by passing options to `integrations.New<Integration>(opts)`
+4. **Send** messages using the `Send()` method
 
 ## Usage Examples
 
 ### SMTP (Email)
 
-The SMTP integration demonstrates the functional options pattern:
+The SMTP integration demonstrates the options builder pattern:
 
 ```go
 package main
@@ -105,15 +119,18 @@ import (
 )
 
 func main() {
-    // Create SMTP integration with functional options
-    smtp, err := integrations.CreateSMTP(
-        integrations.WithSMTPServer("smtp.gmail.com"),
-        integrations.WithSMTPPort(587),
-        integrations.WithSMTPUsername("your-email@gmail.com"),
-        integrations.WithSMTPPassword("your-app-password"),
-        integrations.WithSMTPEmailFrom("sender@example.com"),
-        integrations.WithSMTPEmailTo("recipient@example.com"),
-    )
+    // Build SMTP options
+    opts := integrations.NewSMTPOptions().
+        Server("smtp.gmail.com").
+        Port(587).
+        Username("your-email@gmail.com").
+        Password("your-app-password").
+        From("sender@example.com").
+        To("recipient@example.com").
+        Build()
+
+    // Create SMTP client with options
+    smtp, err := integrations.NewSMTP(opts)
     if err != nil {
         log.Fatal(err)
     }
@@ -130,22 +147,26 @@ func main() {
 }
 ```
 
-**Available Options:**
-- `WithSMTPServer(server string)` - SMTP server hostname
-- `WithSMTPPort(port int)` - SMTP server port
-- `WithSMTPUsername(username string)` - Authentication username
-- `WithSMTPPassword(password string)` - Authentication password
-- `WithSMTPEmailFrom(email string)` - Sender email address
-- `WithSMTPEmailTo(email string)` - Recipient email address
+**Available Methods:**
+- `.Server(server string)` - SMTP server hostname
+- `.Port(port int)` - SMTP server port
+- `.Username(username string)` - Authentication username
+- `.Password(password string)` - Authentication password
+- `.From(email string)` - Sender email address
+- `.To(email string)` - Recipient email address
+- `.Build()` - Returns the SMTPOptions object
 
 ### Slack
 
 ```go
-// Create Slack integration
-slack, err := integrations.CreateSlack(
-    integrations.WithSlackHook("https://hooks.slack.com/services/YOUR/WEBHOOK/URL"),
-    integrations.WithSlackUsername("MyBot"),
-)
+// Build Slack options
+opts := integrations.NewSlackOptions().
+    Hook("https://hooks.slack.com/services/YOUR/WEBHOOK/URL").
+    Username("MyBot").
+    Build()
+
+// Create Slack client
+slack, err := integrations.NewSlack(opts)
 if err != nil {
     log.Fatal(err)
 }
@@ -157,9 +178,10 @@ err = slack.Send("Hello from Slack!", "")
 err = slack.Send("Check out this image!", "https://example.com/image.png")
 ```
 
-**Available Options:**
-- `WithSlackHook(hook string)` - Slack webhook URL
-- `WithSlackUsername(username string)` - Bot username to display
+**Available Methods:**
+- `.Hook(hook string)` - Slack webhook URL
+- `.Username(username string)` - Bot username to display
+- `.Build()` - Returns the SlackOptions object
 
 ## Project Structure
 
@@ -190,92 +212,114 @@ err = slack.Send("Check out this image!", "https://example.com/image.png")
 
 ## Creating a New Integration
 
-To create a new integration following the functional options pattern:
+To create a new integration following the options builder pattern:
 
-### 1. Define the Integration Struct
+### 1. Define the Options Struct (unexported)
 
 ```go
 package integrations
 
+// MyServiceOptions holds the configuration for MyService
+type MyServiceOptions struct {
+    apiKey   string `validate:"required"`
+    endpoint string `validate:"required,url"`
+}
+```
+
+### 2. Define the Client Struct
+
+```go
+// MyService represents a MyService client instance
 type MyService struct {
-    APIKey   string `json:"api_key" validate:"required"`
-    Endpoint string `json:"endpoint" validate:"required,url"`
+    options *MyServiceOptions
 }
 ```
 
-### 2. Create Functional Options
+### 3. Create the Options Builder Struct
 
 ```go
-// WithMyServiceAPIKey sets the API key
-func WithMyServiceAPIKey(apiKey string) Option[MyService] {
-    return func(s *MyService) {
-        s.APIKey = apiKey
-    }
+// MyServiceOptionsBuilder provides a fluent interface for building MyService options
+type MyServiceOptionsBuilder struct {
+    options *MyServiceOptions
 }
+```
 
-// WithMyServiceEndpoint sets the endpoint URL
-func WithMyServiceEndpoint(endpoint string) Option[MyService] {
-    return func(s *MyService) {
-        s.Endpoint = endpoint
+### 4. Create the Constructor Function
+
+```go
+// NewMyServiceOptions creates a new MyService options builder
+func NewMyServiceOptions() *MyServiceOptionsBuilder {
+    return &MyServiceOptionsBuilder{
+        options: &MyServiceOptions{},
     }
 }
 ```
 
-### 3. Implement the Create Function
+### 5. Add Builder Methods
 
 ```go
-// CreateMyService creates a new MyService instance with the provided options
-func CreateMyService(opts ...Option[MyService]) (*MyService, error) {
-    service := &MyService{}
+// APIKey sets the API key
+func (b *MyServiceOptionsBuilder) APIKey(apiKey string) *MyServiceOptionsBuilder {
+    b.options.apiKey = apiKey
+    return b
+}
 
-    // Apply all options
-    for _, opt := range opts {
-        opt(service)
-    }
+// Endpoint sets the endpoint URL
+func (b *MyServiceOptionsBuilder) Endpoint(endpoint string) *MyServiceOptionsBuilder {
+    b.options.endpoint = endpoint
+    return b
+}
 
+// Build returns the configured MyServiceOptions
+func (b *MyServiceOptionsBuilder) Build() *MyServiceOptions {
+    return b.options
+}
+```
+
+### 6. Create the Client Constructor with Validation
+
+```go
+// NewMyService creates a new MyService client with the provided options
+func NewMyService(opts *MyServiceOptions) (*MyService, error) {
     // Validate configuration
-    err := service.Validate()
+    validate := validator.New()
+    err := validate.Struct(opts)
     if err != nil {
         return nil, err
     }
 
-    return service, nil
+    return &MyService{
+        options: opts,
+    }, nil
 }
 ```
 
-### 4. Add Validation
-
-```go
-func (s *MyService) Validate() error {
-    validate := validator.New()
-    err := validate.Struct(s)
-    if err != nil {
-        return err
-    }
-    return nil
-}
-```
-
-### 5. Implement the Send Method
+### 7. Implement the Send Method
 
 ```go
 func (s *MyService) Send(message string) error {
+    // Use s.options.apiKey, s.options.endpoint, etc.
     // Implementation here
     return nil
 }
 ```
 
-### 6. Usage
+### 8. Usage
 
 ```go
-service, err := integrations.CreateMyService(
-    integrations.WithMyServiceAPIKey("your-api-key"),
-    integrations.WithMyServiceEndpoint("https://api.example.com"),
-)
+// Build options
+opts := integrations.NewMyServiceOptions().
+    APIKey("your-api-key").
+    Endpoint("https://api.example.com").
+    Build()
+
+// Create client with options
+service, err := integrations.NewMyService(opts)
 if err != nil {
     log.Fatal(err)
 }
 
+// Use the client
 err = service.Send("Hello, World!")
 ```
 
@@ -290,37 +334,41 @@ All integrations use [go-playground/validator](https://github.com/go-playground/
 - `min=<value>` - Minimum value/length
 - `max=<value>` - Maximum value/length
 
-The `Validate()` method is automatically called during the `Create<Integration>()` function, ensuring invalid configurations are caught before use.
+Validation is automatically performed when calling `New<Integration>(opts)`, ensuring invalid configurations are caught before the client is created.
 
 ## Configuration
 
-### Using Functional Options (Recommended)
+### Using the Options Builder Pattern (Recommended)
 
 ```go
-smtp, err := integrations.CreateSMTP(
-    integrations.WithSMTPServer("smtp.gmail.com"),
-    integrations.WithSMTPPort(587),
-    integrations.WithSMTPUsername("user@example.com"),
-    integrations.WithSMTPPassword("password"),
-    integrations.WithSMTPEmailFrom("from@example.com"),
-    integrations.WithSMTPEmailTo("to@example.com"),
-)
+opts := integrations.NewSMTPOptions().
+    Server("smtp.gmail.com").
+    Port(587).
+    Username("user@example.com").
+    Password("password").
+    From("from@example.com").
+    To("to@example.com").
+    Build()
+
+smtp, err := integrations.NewSMTP(opts)
 ```
 ### Environment Variables
 
-You can load configuration from environment variables before creating integrations:
+You can load configuration from environment variables:
 
 ```go
 import "os"
 
-smtp, err := integrations.CreateSMTP(
-    integrations.WithSMTPServer(os.Getenv("SMTP_SERVER")),
-    integrations.WithSMTPPort(587),
-    integrations.WithSMTPUsername(os.Getenv("SMTP_USERNAME")),
-    integrations.WithSMTPPassword(os.Getenv("SMTP_PASSWORD")),
-    integrations.WithSMTPEmailFrom(os.Getenv("SMTP_FROM")),
-    integrations.WithSMTPEmailTo(os.Getenv("SMTP_TO")),
-)
+opts := integrations.NewSMTPOptions().
+    Server(os.Getenv("SMTP_SERVER")).
+    Port(587).
+    Username(os.Getenv("SMTP_USERNAME")).
+    Password(os.Getenv("SMTP_PASSWORD")).
+    From(os.Getenv("SMTP_FROM")).
+    To(os.Getenv("SMTP_TO")).
+    Build()
+
+smtp, err := integrations.NewSMTP(opts)
 ```
 
 Example `.env` file:
@@ -344,16 +392,20 @@ TELEGRAM_CHANNEL_ID=your_channel
 
 ## Error Handling
 
-The functional options pattern provides clear error handling:
+The options builder pattern provides clear error handling:
 
 ```go
-smtp, err := integrations.CreateSMTP(
-    integrations.WithSMTPServer("smtp.gmail.com"),
-    integrations.WithSMTPPort(587),
+// Build options (no error here)
+opts := integrations.NewSMTPOptions().
+    Server("smtp.gmail.com").
+    Port(587).
     // Missing required fields...
-)
+    Build()
+
+// Validation happens when creating the client
+smtp, err := integrations.NewSMTP(opts)
 if err != nil {
-    // Validation error caught at creation time
+    // Validation error caught at client creation time
     log.Printf("Configuration error: %v", err)
     return
 }
@@ -399,13 +451,13 @@ go test ./pkg/integrations/... -v
 
 ## Contributing
 
-Contributions are welcome! When adding new integrations, please follow the functional options pattern demonstrated in this repository.
+Contributions are welcome! When adding new integrations, please follow the options builder pattern demonstrated in this repository.
 
 ### Development Guidelines
 
 1. Fork the repository
 2. Create a feature branch (`git checkout -b feat/amazing-feature`)
-3. Follow the functional options pattern (see "Creating a New Integration" above)
+3. Follow the options builder pattern (see "Creating a New Integration" above)
 4. Add comprehensive tests for your integration
 5. Ensure all tests pass: `go test ./...`
 6. Add usage examples to the README
@@ -434,11 +486,11 @@ Contributions are welcome! When adding new integrations, please follow the funct
 
 **Examples:**
 ```
-feat(smtp): add functional options pattern
-feat(telegram): add CreateTelegram with options
+feat(smtp): add options builder pattern implementation
+feat(telegram): add options builder with method chaining
 fix(slack): correct webhook payload formatting
-docs(readme): update usage examples with functional options
-refactor(pushover): migrate to functional options pattern
+docs(readme): update usage examples with options builder pattern
+refactor(pushover): migrate to options builder pattern
 test(smtp): add validation tests
 ```
 
@@ -460,31 +512,48 @@ This project uses the following key libraries:
 
 See [go.mod](go.mod) for the complete list of dependencies.
 
-## Benefits of the Functional Options Pattern
+## Benefits of the Options Builder Pattern
+
+### Clean Syntax
+Build options separately from client creation:
+```go
+opts := integrations.NewSMTPOptions().
+    Server("smtp.gmail.com").
+    Port(587).
+    Build()
+
+smtp, err := integrations.NewSMTP(opts)
+```
+
+### Separation of Concerns
+Options building is completely separate from client creation, following the same pattern as MongoDB's official driver.
 
 ### Type Safety
-The generic `Option[T]` type provides compile-time type checking, preventing configuration errors.
+Compile-time type checking prevents configuration errors.
 
 ### Flexibility
-Configure only the options you need. No need to pass empty or default values.
+Configure only the options you need. Method chaining is optional.
 
 ### Validation
-Built-in validation ensures configurations are correct before use, catching errors early.
+Built-in validation when creating the client ensures configurations are correct before use, catching errors early.
 
 ### Extensibility
-Adding new options doesn't break existing code. Simply add new `With*` functions.
+Adding new builder methods doesn't break existing code. Simply add new chainable methods to the options builder.
 
 ### Readability
+Self-documenting fluent API makes code easy to read and understand:
 ```go
-// Clear and self-documenting
-smtp, err := integrations.CreateSMTP(
-    integrations.WithSMTPServer("smtp.gmail.com"),
-    integrations.WithSMTPPort(587),
-    integrations.WithSMTPUsername("user@example.com"),
-    integrations.WithSMTPPassword("password"),
-    integrations.WithSMTPEmailFrom("from@example.com"),
-    integrations.WithSMTPEmailTo("to@example.com"),
-)
+// Clear and readable - MongoDB style
+opts := integrations.NewSMTPOptions().
+    Server("smtp.gmail.com").
+    Port(587).
+    Username("user@example.com").
+    Password("password").
+    From("from@example.com").
+    To("to@example.com").
+    Build()
+
+smtp, err := integrations.NewSMTP(opts)
 ```
 
 ## Support

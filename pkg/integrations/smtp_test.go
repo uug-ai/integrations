@@ -8,77 +8,131 @@ import (
 
 func setupSMTPTest() (*SMTP, error) {
 	port, _ := strconv.Atoi(os.Getenv("SMTP_PORT"))
-	smtpMailtrap, err := CreateSMTP(
-		WithSMTPServer(os.Getenv("SMTP_SERVER")),
-		WithSMTPPort(port),
-		WithSMTPUsername(os.Getenv("SMTP_USERNAME")),
-		WithSMTPPassword(os.Getenv("SMTP_PASSWORD")),
-		WithSMTPEmailFrom(os.Getenv("EMAIL_FROM")),
-		WithSMTPEmailTo(os.Getenv("EMAIL_TO")),
-	)
-	return smtpMailtrap, err
+
+	opts := NewSMTPOptions().
+		Server(os.Getenv("SMTP_SERVER")).
+		Port(port).
+		Username(os.Getenv("SMTP_USERNAME")).
+		Password(os.Getenv("SMTP_PASSWORD")).
+		From(os.Getenv("EMAIL_FROM")).
+		To(os.Getenv("EMAIL_TO")).
+		Build()
+
+	smtp, err := NewSMTP(opts)
+	return smtp, err
 }
 
 func TestSMTPValidation(t *testing.T) {
+	port, _ := strconv.Atoi(os.Getenv("SMTP_PORT"))
+
 	tests := []struct {
 		name        string
-		setup       func(*SMTP)
+		buildOpts   func() *SMTPOptions
 		expectError bool
 	}{
 		{
 			name: "MissingEmailFrom",
-			setup: func(s *SMTP) {
-				s.EmailFrom = ""
+			buildOpts: func() *SMTPOptions {
+				return NewSMTPOptions().
+					Server(os.Getenv("SMTP_SERVER")).
+					Port(port).
+					Username(os.Getenv("SMTP_USERNAME")).
+					Password(os.Getenv("SMTP_PASSWORD")).
+					To(os.Getenv("EMAIL_TO")).
+					Build()
 			},
 			expectError: true,
 		},
 		{
 			name: "MissingEmailTo",
-			setup: func(s *SMTP) {
-				s.EmailTo = ""
+			buildOpts: func() *SMTPOptions {
+				return NewSMTPOptions().
+					Server(os.Getenv("SMTP_SERVER")).
+					Port(port).
+					Username(os.Getenv("SMTP_USERNAME")).
+					Password(os.Getenv("SMTP_PASSWORD")).
+					From(os.Getenv("EMAIL_FROM")).
+					Build()
 			},
 			expectError: true,
 		},
 		{
 			name: "WrongEmailTo",
-			setup: func(s *SMTP) {
-				s.EmailTo = "invalid-email-address"
+			buildOpts: func() *SMTPOptions {
+				return NewSMTPOptions().
+					Server(os.Getenv("SMTP_SERVER")).
+					Port(port).
+					Username(os.Getenv("SMTP_USERNAME")).
+					Password(os.Getenv("SMTP_PASSWORD")).
+					From(os.Getenv("EMAIL_FROM")).
+					To("invalid-email-address").
+					Build()
 			},
 			expectError: true,
 		},
 		{
 			name: "WrongEmailFrom",
-			setup: func(s *SMTP) {
-				s.EmailFrom = "not-an-email"
+			buildOpts: func() *SMTPOptions {
+				return NewSMTPOptions().
+					Server(os.Getenv("SMTP_SERVER")).
+					Port(port).
+					Username(os.Getenv("SMTP_USERNAME")).
+					Password(os.Getenv("SMTP_PASSWORD")).
+					From("not-an-email").
+					To(os.Getenv("EMAIL_TO")).
+					Build()
 			},
 			expectError: true,
 		},
 		{
 			name: "MissingServer",
-			setup: func(s *SMTP) {
-				s.Server = ""
+			buildOpts: func() *SMTPOptions {
+				return NewSMTPOptions().
+					Port(port).
+					Username(os.Getenv("SMTP_USERNAME")).
+					Password(os.Getenv("SMTP_PASSWORD")).
+					From(os.Getenv("EMAIL_FROM")).
+					To(os.Getenv("EMAIL_TO")).
+					Build()
 			},
 			expectError: true,
 		},
 		{
 			name: "MissingPort",
-			setup: func(s *SMTP) {
-				s.Port = 0
+			buildOpts: func() *SMTPOptions {
+				return NewSMTPOptions().
+					Server(os.Getenv("SMTP_SERVER")).
+					Username(os.Getenv("SMTP_USERNAME")).
+					Password(os.Getenv("SMTP_PASSWORD")).
+					From(os.Getenv("EMAIL_FROM")).
+					To(os.Getenv("EMAIL_TO")).
+					Build()
 			},
 			expectError: true,
 		},
 		{
 			name: "NegativePort",
-			setup: func(s *SMTP) {
-				s.Port = -25
+			buildOpts: func() *SMTPOptions {
+				return NewSMTPOptions().
+					Server(os.Getenv("SMTP_SERVER")).
+					Port(-25).
+					Username(os.Getenv("SMTP_USERNAME")).
+					Password(os.Getenv("SMTP_PASSWORD")).
+					From(os.Getenv("EMAIL_FROM")).
+					To(os.Getenv("EMAIL_TO")).
+					Build()
 			},
 			expectError: true,
 		},
 		{
 			name: "ValidWithoutCredentials",
-			setup: func(s *SMTP) {
-				s.Username = ""
-				s.Password = ""
+			buildOpts: func() *SMTPOptions {
+				return NewSMTPOptions().
+					Server(os.Getenv("SMTP_SERVER")).
+					Port(port).
+					From(os.Getenv("EMAIL_FROM")).
+					To(os.Getenv("EMAIL_TO")).
+					Build()
 			},
 			expectError: true,
 		},
@@ -86,22 +140,10 @@ func TestSMTPValidation(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			smtpMailtrap, err := setupSMTPTest()
-			if err != nil {
-				t.Fatalf("failed to setup SMTP: %v", err)
-			}
-			tt.setup(smtpMailtrap)
+			opts := tt.buildOpts()
 
-			err = smtpMailtrap.Validate()
-			if tt.expectError && err == nil {
-				t.Errorf("expected error got nil")
-			}
-			if !tt.expectError && err != nil {
-				t.Errorf("expected error to be nil got %v", err)
-			}
-
-			// Send message to SMTP server.
-			err = smtpMailtrap.Send("Test Subject", "This is the body of the email.", "<p>This is the body of the email.</p>")
+			// Try to create SMTP client - validation happens here
+			_, err := NewSMTP(opts)
 
 			if tt.expectError && err == nil {
 				t.Errorf("expected error got nil")
@@ -144,34 +186,66 @@ func TestSMTPFieldEmpty(t *testing.T) {
 }
 
 func TestSMTPServer(t *testing.T) {
+	port, _ := strconv.Atoi(os.Getenv("SMTP_PORT"))
+
 	tests := []struct {
 		name        string
-		setup       func(*SMTP)
+		buildOpts   func() *SMTPOptions
 		expectError bool
 	}{
 		{
-			name:        "ValidSMTP",
-			setup:       func(s *SMTP) {},
+			name: "ValidSMTP",
+			buildOpts: func() *SMTPOptions {
+				return NewSMTPOptions().
+					Server(os.Getenv("SMTP_SERVER")).
+					Port(port).
+					Username(os.Getenv("SMTP_USERNAME")).
+					Password(os.Getenv("SMTP_PASSWORD")).
+					From(os.Getenv("EMAIL_FROM")).
+					To(os.Getenv("EMAIL_TO")).
+					Build()
+			},
 			expectError: false,
 		},
 		{
 			name: "WrongServer",
-			setup: func(s *SMTP) {
-				s.Server = "wrong.smtp.server"
+			buildOpts: func() *SMTPOptions {
+				return NewSMTPOptions().
+					Server("wrong.smtp.server").
+					Port(port).
+					Username(os.Getenv("SMTP_USERNAME")).
+					Password(os.Getenv("SMTP_PASSWORD")).
+					From(os.Getenv("EMAIL_FROM")).
+					To(os.Getenv("EMAIL_TO")).
+					Build()
 			},
 			expectError: true,
 		},
 		{
 			name: "WrongPort",
-			setup: func(s *SMTP) {
-				s.Port = -100
+			buildOpts: func() *SMTPOptions {
+				return NewSMTPOptions().
+					Server(os.Getenv("SMTP_SERVER")).
+					Port(-100).
+					Username(os.Getenv("SMTP_USERNAME")).
+					Password(os.Getenv("SMTP_PASSWORD")).
+					From(os.Getenv("EMAIL_FROM")).
+					To(os.Getenv("EMAIL_TO")).
+					Build()
 			},
 			expectError: true,
 		},
 		{
 			name: "InvalidPort",
-			setup: func(s *SMTP) {
-				s.Port = 0
+			buildOpts: func() *SMTPOptions {
+				return NewSMTPOptions().
+					Server(os.Getenv("SMTP_SERVER")).
+					Port(0).
+					Username(os.Getenv("SMTP_USERNAME")).
+					Password(os.Getenv("SMTP_PASSWORD")).
+					From(os.Getenv("EMAIL_FROM")).
+					To(os.Getenv("EMAIL_TO")).
+					Build()
 			},
 			expectError: true,
 		},
@@ -179,19 +253,32 @@ func TestSMTPServer(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			smtpMailtrap, err := setupSMTPTest()
-			if err != nil {
-				t.Fatalf("failed to setup SMTP: %v", err)
-			}
-			tt.setup(smtpMailtrap)
+			opts := tt.buildOpts()
 
-			// Send message to SMTP server.
-			err = smtpMailtrap.Send("Test Subject", "This is the body of the email.", "<p>This is the body of the email.</p>")
-			if tt.expectError && err == nil {
-				t.Errorf("expected error got nil")
+			// Try to create SMTP client
+			smtpClient, err := NewSMTP(opts)
+
+			// For validation errors, check client creation
+			if tt.expectError && tt.name != "ValidSMTP" && tt.name != "WrongServer" {
+				if err == nil {
+					t.Errorf("expected error during client creation got nil")
+				}
+				return
 			}
-			if !tt.expectError && err != nil {
-				t.Errorf("expected error to be nil got %v", err)
+
+			if err != nil && !tt.expectError {
+				t.Fatalf("failed to create SMTP client: %v", err)
+			}
+
+			// For runtime errors (like wrong server), try to send
+			if smtpClient != nil {
+				err = smtpClient.Send("Test Subject", "This is the body of the email.", "<p>This is the body of the email.</p>")
+				if tt.expectError && err == nil {
+					t.Errorf("expected error got nil")
+				}
+				if !tt.expectError && err != nil {
+					t.Errorf("expected error to be nil got %v", err)
+				}
 			}
 		})
 	}

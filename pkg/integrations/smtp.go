@@ -10,86 +10,89 @@ import (
 	"gopkg.in/gomail.v2"
 )
 
+// SMTPOptions holds the configuration for SMTP
+type SMTPOptions struct {
+	Server    string `validate:"required"`
+	Port      int    `validate:"required,gt=0"`
+	Username  string `validate:"required"`
+	Password  string `validate:"required"`
+	EmailFrom string `validate:"required,email"`
+	EmailTo   string `validate:"required,email"`
+}
+
+// SMTPOptionsBuilder provides a fluent interface for building SMTP options
+type SMTPOptionsBuilder struct {
+	options *SMTPOptions
+}
+
+// SMTPOptions creates a new SMTP options builder
+func NewSMTPOptions() *SMTPOptionsBuilder {
+	return &SMTPOptionsBuilder{
+		options: &SMTPOptions{},
+	}
+}
+
+// Server sets the SMTP server hostname or IP address
+func (b *SMTPOptionsBuilder) Server(server string) *SMTPOptionsBuilder {
+	b.options.Server = server
+	return b
+}
+
+// Port sets the SMTP server port
+func (b *SMTPOptionsBuilder) Port(port int) *SMTPOptionsBuilder {
+	b.options.Port = port
+	return b
+}
+
+// Username sets the SMTP authentication username
+func (b *SMTPOptionsBuilder) Username(username string) *SMTPOptionsBuilder {
+	b.options.Username = username
+	return b
+}
+
+// Password sets the SMTP authentication password
+func (b *SMTPOptionsBuilder) Password(password string) *SMTPOptionsBuilder {
+	b.options.Password = password
+	return b
+}
+
+// From sets the sender email address
+func (b *SMTPOptionsBuilder) From(emailFrom string) *SMTPOptionsBuilder {
+	b.options.EmailFrom = emailFrom
+	return b
+}
+
+// To sets the recipient email address
+func (b *SMTPOptionsBuilder) To(emailTo string) *SMTPOptionsBuilder {
+	b.options.EmailTo = emailTo
+	return b
+}
+
+// Build returns the configured SMTPOptions
+func (b *SMTPOptionsBuilder) Build() *SMTPOptions {
+	return b.options
+}
+
+// SMTP represents an SMTP client instance
 type SMTP struct {
-	// Server is the SMTP server hostname or IP address.
-	Server    string `json:"server" validate:"required"`
-	Port      int    `json:"port" validate:"required,gt=0"`
-	Username  string `json:"username" validate:"required"`
-	Password  string `json:"password" validate:"required"`
-	EmailFrom string `json:"email_from" validate:"required,email"`
-	EmailTo   string `json:"email_to" validate:"required,email"`
+	options *SMTPOptions
 }
 
-// WithSMTPServer sets the server hostname or IP address
-func WithSMTPServer(server string) Option[SMTP] {
-	return func(s *SMTP) {
-		s.Server = server
-	}
-}
-
-// WithSMTPPort sets the server port
-func WithSMTPPort(port int) Option[SMTP] {
-	return func(s *SMTP) {
-		s.Port = port
-	}
-}
-
-// WithSMTPUsername sets the SMTP authentication username
-func WithSMTPUsername(username string) Option[SMTP] {
-	return func(s *SMTP) {
-		s.Username = username
-	}
-}
-
-// WithSMTPPassword sets the SMTP authentication password
-func WithSMTPPassword(password string) Option[SMTP] {
-	return func(s *SMTP) {
-		s.Password = password
-	}
-}
-
-// WithSMTPEmailFrom sets the sender email address
-func WithSMTPEmailFrom(emailFrom string) Option[SMTP] {
-	return func(s *SMTP) {
-		s.EmailFrom = emailFrom
-	}
-}
-
-// WithSMTPEmailTo sets the recipient email address
-func WithSMTPEmailTo(emailTo string) Option[SMTP] {
-	return func(s *SMTP) {
-		s.EmailTo = emailTo
-	}
-}
-
-// CreateSMTP creates a new SMTP instance with the provided options
-func CreateSMTP(opts ...Option[SMTP]) (*SMTP, error) {
-	smtp := &SMTP{}
-
-	// Apply all options
-	for _, opt := range opts {
-		opt(smtp)
-	}
-
+// NewSMTP creates a new SMTP client with the provided options
+func NewSMTP(opts *SMTPOptions) (*SMTP, error) {
 	// Validate SMTP configuration
-	err := smtp.Validate()
+	validate := validator.New()
+	err := validate.Struct(opts)
 	if err != nil {
 		return nil, err
 	}
 
-	return smtp, nil
+	return &SMTP{
+		options: opts,
+	}, nil
 }
 
-func (smtp *SMTP) Validate() error {
-	validate := validator.New()
-	err := validate.Struct(smtp)
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
-func (smtp *SMTP) Send(title string, body string, textBody string) (err error) {
+func (s *SMTP) Send(title string, body string, textBody string) (err error) {
 
 	// Check if title and body are not empty
 	if title == "" {
@@ -103,7 +106,7 @@ func (smtp *SMTP) Send(title string, body string, textBody string) (err error) {
 	}
 
 	// Setup gomail
-	d := gomail.NewDialer(smtp.Server, smtp.Port, smtp.Username, smtp.Password)
+	d := gomail.NewDialer(s.options.Server, s.options.Port, s.options.Username, s.options.Password)
 	d.TLSConfig = &tls.Config{InsecureSkipVerify: true}
 
 	// Check if we can dial to the server
@@ -114,8 +117,8 @@ func (smtp *SMTP) Send(title string, body string, textBody string) (err error) {
 
 	// Create the message
 	m := gomail.NewMessage()
-	m.SetHeader("From", smtp.EmailFrom)
-	m.SetHeader("To", smtp.EmailTo)
+	m.SetHeader("From", s.options.EmailFrom)
+	m.SetHeader("To", s.options.EmailTo)
 	m.SetHeader("Subject", title)
 	timeNow := time.Now().Unix()
 	m.SetHeader("Message-Id", "<"+strconv.FormatInt(timeNow, 10)+"@kerberos.io>")
