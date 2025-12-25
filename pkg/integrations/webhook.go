@@ -2,7 +2,6 @@ package integrations
 
 import (
 	"bytes"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -116,10 +115,7 @@ func (w *Webhook) Send(body string) error {
 		return errors.New("message body is empty")
 	}
 	// Prepare payload body string to bytes
-	bytesRepresentation, err := json.Marshal(body)
-	if err != nil {
-		return err
-	}
+	bytesRepresentation := []byte(body)
 
 	// Send HTTP POST request to the webhook URL
 	resp, err := w.client.Post(w.options.Url, "application/json", bytes.NewBuffer(bytesRepresentation))
