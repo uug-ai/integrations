@@ -280,6 +280,43 @@ func TestWebhookSendWithMock(t *testing.T) {
 	}
 }
 
+func TestWebhookInvalidJSON(t *testing.T) {
+	// Create a struct with a function field that cannot be marshaled to JSON
+	type InvalidStruct struct {
+		Field func()
+	}
+
+	invalidData := InvalidStruct{
+		Field: func() {},
+	}
+
+	mockClient := &MockWebhookHTTPClient{
+		PostFunc: func(url string, contentType string, body io.Reader) (*http.Response, error) {
+			return &http.Response{StatusCode: 200, Body: io.NopCloser(strings.NewReader("{}"))}, nil
+		},
+	}
+
+	opts := NewWebhookOptions().
+		SetUrl("http://test.example.com/hook").
+		Build()
+
+	webhook, err := NewWebhook(opts, mockClient)
+	if err != nil {
+		t.Fatalf("failed to setup Webhook: %v", err)
+	}
+
+	// This should return an error because functions cannot be marshaled to JSON
+	err = webhook.Send(invalidData)
+	if err == nil {
+		t.Error("Expected error when marshaling invalid JSON, but got nil")
+	}
+
+	// Verify that Post was not called since marshaling failed
+	if mockClient.PostCalled {
+		t.Error("Expected Post to not be called when JSON marshaling fails")
+	}
+}
+
 func TestWebhookContentType(t *testing.T) {
 	mockClient := &MockWebhookHTTPClient{}
 

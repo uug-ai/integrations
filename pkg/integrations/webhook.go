@@ -111,8 +111,8 @@ func NewWebhook(opts *WebhookOptions, client ...WebhookHTTPClient) (*Webhook, er
 //
 // Returns:
 //   - error: An error if body is empty, if JSON marshaling fails, or if the HTTP request fails
-func (w *Webhook) Send(body string) error {
-	if body == "" {
+func (w *Webhook) Send(body any) error {
+	if body == nil || body == "" {
 		return errors.New("message body is empty")
 	}
 	// Prepare payload
