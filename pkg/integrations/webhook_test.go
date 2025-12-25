@@ -396,7 +396,7 @@ func TestIntegrationWebhook(t *testing.T) {
 	tests := []struct {
 		name        string
 		buildOpts   func() *WebhookOptions
-		body        string
+		body        any
 		expectError bool
 	}{
 		{
@@ -420,7 +420,7 @@ func TestIntegrationWebhook(t *testing.T) {
 					SetTimeout(timeout).
 					Build()
 			},
-			body:        "{\"message\": \"Test from UUG AI\", \"timestamp\": \"2023-01-01T00:00:00Z\"}",
+			body:        map[string]string{"message": "Test from UUG AI", "timestamp": "2023-01-01T00:00:00Z"},
 			expectError: false,
 		},
 		{
@@ -432,7 +432,7 @@ func TestIntegrationWebhook(t *testing.T) {
 					SetTimeout(timeout).
 					Build()
 			},
-			body:        "{\"message\": \"Test from UUG AI\", \"timestamp\": \"2023-01-01T00:00:00Z\"}",
+			body:        map[string]string{"message": "Test from UUG AI", "timestamp": "2023-01-01T00:00:00Z"},
 			expectError: true,
 		},
 	}
