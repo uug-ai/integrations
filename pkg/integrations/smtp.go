@@ -153,6 +153,9 @@ func (s *SMTP) Send(title string, body string, textBody string) (err error) {
 	if body == "" {
 		return errors.New("empty body")
 	}
+	if textBody == "" {
+		return errors.New("empty text body")
+	}
 
 	// Check if we can dial to the server
 	_, err = s.client.Dial()
