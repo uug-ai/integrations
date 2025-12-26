@@ -351,7 +351,7 @@ func TestWebhookBuilderPattern(t *testing.T) {
 	}
 }
 
-/*func TestIntegrationWebhook(t *testing.T) {
+func TestIntegrationWebhook(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping integration test")
 	}
@@ -417,4 +417,4 @@ func TestWebhookBuilderPattern(t *testing.T) {
 			}
 		})
 	}
-}*/
+}
