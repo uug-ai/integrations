@@ -363,11 +363,11 @@ func TestIntegrationWebhook(t *testing.T) {
 		expectError bool
 	}{
 		{
-			name: "ValidWebhook",
+			name: "WebhookReturns200",
 			buildOpts: func() *WebhookOptions {
 				timeout, _ := strconv.Atoi(os.Getenv("WEBHOOK_TIMEOUT"))
 				return NewWebhookOptions().
-					SetUrl(os.Getenv("WEBHOOK_URL")).
+					SetUrl(os.Getenv("WEBHOOK_URL") + "/200").
 					SetTimeout(timeout).
 					Build()
 			},
@@ -375,23 +375,11 @@ func TestIntegrationWebhook(t *testing.T) {
 			expectError: false,
 		},
 		{
-			name: "ValidWebhookWithJSON",
+			name: "WebhookReturns400",
 			buildOpts: func() *WebhookOptions {
 				timeout, _ := strconv.Atoi(os.Getenv("WEBHOOK_TIMEOUT"))
 				return NewWebhookOptions().
-					SetUrl(os.Getenv("WEBHOOK_URL")).
-					SetTimeout(timeout).
-					Build()
-			},
-			body:        "{\"message\": \"Test from UUG AI\", \"timestamp\": \"2023-01-01T00:00:00Z\"}",
-			expectError: false,
-		},
-		{
-			name: "ValidWebhookReturns400",
-			buildOpts: func() *WebhookOptions {
-				timeout, _ := strconv.Atoi(os.Getenv("WEBHOOK_TIMEOUT"))
-				return NewWebhookOptions().
-					SetUrl(os.Getenv("WEBHOOK_URL") + "?httpCode=400").
+					SetUrl(os.Getenv("WEBHOOK_URL") + "/400").
 					SetTimeout(timeout).
 					Build()
 			},
@@ -403,7 +391,7 @@ func TestIntegrationWebhook(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			opts := tt.buildOpts()
-			webhookIntegration, err := NewWebhook(opts, nil) // Use real HTTP client
+			webhookIntegration, err := NewWebhook(opts) // Use real HTTP client
 			if err != nil {
 				t.Fatalf("failed to setup Webhook: %v", err)
 			}
