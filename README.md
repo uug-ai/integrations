@@ -22,7 +22,7 @@ go get github.com/uug-ai/integrations
 
 ## Sending a message
 
-Each channel is a plain struct with its settings and a `Send` method that takes a `message.Message`.
+Every integration is created the same way: build its options with `New<Integration>Options()`, chaining `Set<Field>` calls and ending with `Build()`, then pass them to `New<Integration>(opts)`. The constructor validates the options and returns the sender, or an `OptionsError` when the integration cannot deliver with them (a missing token, an invalid URL). The sender keeps a copy of the options.
 
 ```go
 import (
@@ -38,28 +38,60 @@ m := message.Message{
     Media: []message.Media{{Type: "video", Url: videoURL, ThumbnailUrl: thumbnailURL}},
 }
 
-slack := integrations.Slack{Hook: "https://hooks.slack.com/services/...", Username: "Hub"}
-err := slack.SendWithContext(ctx, m)
+slack, err := integrations.NewSlack(integrations.NewSlackOptions().
+    SetHook("https://hooks.slack.com/services/...").
+    SetUsername("Hub").
+    Build())
+if err != nil {
+    return err
+}
+err = slack.SendWithContext(ctx, m)
 
-webhook := integrations.Webhook{Url: "https://example.com/hook"}
+webhook, err := integrations.NewWebhook(integrations.NewWebhookOptions().
+    SetUrl("https://example.com/hook").
+    Build())
+if err != nil {
+    return err
+}
 err = webhook.SendWithContext(ctx, m)
 ```
 
+| Integration | Options builder | Constructor | Send |
+|-------------|-----------------|-------------|------|
+| Slack | `NewSlackOptions()` | `NewSlack` | `Send`, `SendWithContext` |
+| Webhook | `NewWebhookOptions()` | `NewWebhook` | `Send`, `SendWithContext` |
+| SMTP | `NewSMTPOptions()` | `NewSMTP` | `Send` |
+| Mailgun | `NewMailOptions()` | `NewMail` | `Send` |
+| SendGrid | `NewSendgridOptions()` | `NewSendgrid` | `SendNotification` |
+| Telegram | `NewTelegramOptions()` | `NewTelegram` | `Send` |
+| Pushover | `NewPushoverOptions()` | `NewPushover` | `Send` |
+| Pushbullet | `NewPushbulletOptions()` | `NewPushbullet` | `SendLink`, `SendMessage` |
+| Pusher | `NewPusherOptions()` | `NewPusher` | `Trigger`, `Send`, `SendNotification` |
+| Alexa | `NewAlexaOptions()` | `NewAlexa` | `Send` |
+| IFTTT | `NewIftttOptions()` | `NewIfttt` | `Send` |
+| SMS (Twilio) | `NewSmsOptions()` | `NewSms` | `Send` |
+| MQTT | `NewMQTTOptions()` | `NewMQTT` | `SendNotification` |
+
+`OptionsError` reports `DeliveryRejected() true`, so a caller that classifies delivery errors treats bad options as a rejection, not something to retry.
+
 ### From saved channels
 
-The `...FromModel` builders map a saved channel from `github.com/uug-ai/models` to its sender. They do not check `Enabled` or `Valid`; the caller picks the channels to send to.
+The `...FromModel` helpers build the sender for a saved channel from `github.com/uug-ai/models` through its options builder. They do not check `Enabled` or `Valid`; the caller picks the channels to send to.
 
 ```go
 if channels.Slack.Enabled {
-    err := integrations.SlackFromModel(channels.Slack).SendWithContext(ctx, m)
+    slack, err := integrations.SlackFromModel(channels.Slack)
+    if err == nil {
+        err = slack.SendWithContext(ctx, m)
+    }
 }
 ```
 
-Builders: `SlackFromModel`, `WebhookFromModel`, `TelegramFromModel`, `PushbulletFromModel`, `PushoverFromModel`, `AlexaFromModel`, `IftttFromModel`, `SmsFromModel`.
+Helpers: `SlackFromModel`, `WebhookFromModel`, `TelegramFromModel`, `PushbulletFromModel`, `PushoverFromModel`, `AlexaFromModel`, `IftttFromModel`, `SmsFromModel`.
 
 ### Email
 
-`EmailFromEnv(provider, to, template)` returns the sender for `smtp`, `mailgun` or `sendgrid`, configured from the environment. `SMTPFromEnv`, `MailgunFromEnv` and `SendgridFromEnv` build one provider directly.
+`EmailFromEnv(provider, to, template, templates)` returns the sender for `smtp`, `mailgun` or `sendgrid`, configured from the environment through the options builders. `SMTPFromEnv`, `MailgunFromEnv` and `SendgridFromEnv` build one provider directly. Missing settings (server, port, sender, API key) return an `OptionsError`.
 
 | Provider | Environment |
 |----------|-------------|
@@ -103,7 +135,7 @@ Errors keep enough detail to decide whether a retry can succeed:
 
 ### Pusher
 
-`Pusher` needs the Pusher app credentials (`AppID`, `Key`, `Secret`, `Cluster`); `PusherFromEnv(event)` reads them from `PUSHER_APP_ID`, `PUSHER_KEY`, `PUSHER_SECRET` and `PUSHER_CLUSTER`. It triggers the `Channel` event on the channel named after `Message.User`, which must be the recipient's username. `Trigger` returns the delivery error; `Send` only reports whether the recipient was valid.
+`Pusher` needs the Pusher app credentials (`SetAppID`, `SetKey`, `SetSecret`, `SetCluster`); `PusherFromEnv(event)` reads them from `PUSHER_APP_ID`, `PUSHER_KEY`, `PUSHER_SECRET` and `PUSHER_CLUSTER`. It triggers the `Channel` event on the channel named after `Message.User`, which must be the recipient's username. `Trigger` returns the delivery error; `Send` only reports whether the recipient was valid.
 
 ## Testing
 
@@ -116,9 +148,10 @@ Tests use local HTTP servers and do not reach the providers.
 ## Contributing
 
 1. Create a branch (`feat/...`, `fix/...`).
-2. Add tests next to the code.
-3. Run `go vet ./...` and `go test ./...`.
-4. Write commit messages following [Conventional Commits](https://www.conventionalcommits.org/), with the integration as scope when it applies (`fix(slack): ...`).
+2. Give a new integration the same shape as the others: an `<Name>Options` struct with `validate` tags, a `<Name>OptionsBuilder` from `New<Name>Options()` with one `Set<Field>` per field and `Build()`, and `New<Name>(opts)` that calls `validateOptions` and keeps a copy of the options.
+3. Add tests next to the code.
+4. Run `go vet ./...` and `go test ./...`.
+5. Write commit messages following [Conventional Commits](https://www.conventionalcommits.org/), with the integration as scope when it applies (`fix(slack): ...`).
 
 ## License
 

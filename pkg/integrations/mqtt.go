@@ -10,10 +10,61 @@ import (
 	"github.com/uug-ai/integrations/pkg/message"
 )
 
+// MQTTOptions configures MQTT.
+type MQTTOptions struct {
+	// URI is the broker URI.
+	URI string `json:"uri,omitempty" validate:"required"`
+	// Username is the broker user.
+	Username string `json:"username,omitempty"`
+	// Password is the broker password.
+	Password string `json:"password,omitempty"`
+}
+
+// MQTTOptionsBuilder builds MQTTOptions.
+type MQTTOptionsBuilder struct {
+	options *MQTTOptions
+}
+
+// NewMQTTOptions starts building MQTTOptions.
+func NewMQTTOptions() *MQTTOptionsBuilder {
+	return &MQTTOptionsBuilder{options: &MQTTOptions{}}
+}
+
+// SetURI sets the broker URI.
+func (b *MQTTOptionsBuilder) SetURI(uri string) *MQTTOptionsBuilder {
+	b.options.URI = uri
+	return b
+}
+
+// SetUsername sets the broker user.
+func (b *MQTTOptionsBuilder) SetUsername(username string) *MQTTOptionsBuilder {
+	b.options.Username = username
+	return b
+}
+
+// SetPassword sets the broker password.
+func (b *MQTTOptionsBuilder) SetPassword(password string) *MQTTOptionsBuilder {
+	b.options.Password = password
+	return b
+}
+
+// Build returns the configured MQTTOptions.
+func (b *MQTTOptionsBuilder) Build() *MQTTOptions {
+	return b.options
+}
+
+// MQTT connects to an MQTT broker.
 type MQTT struct {
-	URI      string
-	Username string
-	Password string
+	options *MQTTOptions
+}
+
+// NewMQTT validates opts and returns a MQTT sender that uses a copy of them.
+func NewMQTT(opts *MQTTOptions) (*MQTT, error) {
+	if err := validateOptions("mqtt", opts); err != nil {
+		return nil, err
+	}
+	options := *opts
+	return &MQTT{options: &options}, nil
 }
 
 func newMQTTClientID() (string, error) {
@@ -25,11 +76,11 @@ func newMQTTClientID() (string, error) {
 	return "hub-pipe-notif-" + hex.EncodeToString(random), nil
 }
 
-func (mqtt MQTT) SendNotification(message message.Message) bool {
+func (mqtt *MQTT) SendNotification(message message.Message) bool {
 
-	MQTTURI := mqtt.URI
-	MQTTUsername := mqtt.Username
-	MQTTPassword := mqtt.Password
+	MQTTURI := mqtt.options.URI
+	MQTTUsername := mqtt.options.Username
+	MQTTPassword := mqtt.options.Password
 
 	if MQTTURI == "" {
 		return false

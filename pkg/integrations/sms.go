@@ -14,20 +14,78 @@ import (
 
 const twilioAPIBase = "https://api.twilio.com/2010-04-01"
 
-type Sms struct {
-	AccountSID string `json:"accountsid,omitempty"`
-	AuthToken  string `json:"authtoken,omitempty"`
-	From       string `json:"from,omitempty"`
-	To         string `json:"to,omitempty"`
+// SmsOptions configures Sms.
+type SmsOptions struct {
+	// AccountSID is the Twilio account SID.
+	AccountSID string `json:"accountsid,omitempty" validate:"required"`
+	// AuthToken is the Twilio auth token.
+	AuthToken string `json:"authtoken,omitempty" validate:"required"`
+	// From is the sending phone number.
+	From string `json:"from,omitempty" validate:"required"`
+	// To is the receiving phone number.
+	To string `json:"to,omitempty" validate:"required"`
 }
 
-func (sms Sms) Send(m message.Message) bool {
+// SmsOptionsBuilder builds SmsOptions.
+type SmsOptionsBuilder struct {
+	options *SmsOptions
+}
 
-	accountSid := sms.AccountSID
-	authToken := sms.AuthToken
+// NewSmsOptions starts building SmsOptions.
+func NewSmsOptions() *SmsOptionsBuilder {
+	return &SmsOptionsBuilder{options: &SmsOptions{}}
+}
 
-	from := sms.From
-	to := sms.To
+// SetAccountSID sets the Twilio account SID.
+func (b *SmsOptionsBuilder) SetAccountSID(accountSID string) *SmsOptionsBuilder {
+	b.options.AccountSID = accountSID
+	return b
+}
+
+// SetAuthToken sets the Twilio auth token.
+func (b *SmsOptionsBuilder) SetAuthToken(authToken string) *SmsOptionsBuilder {
+	b.options.AuthToken = authToken
+	return b
+}
+
+// SetFrom sets the sending phone number.
+func (b *SmsOptionsBuilder) SetFrom(from string) *SmsOptionsBuilder {
+	b.options.From = from
+	return b
+}
+
+// SetTo sets the receiving phone number.
+func (b *SmsOptionsBuilder) SetTo(to string) *SmsOptionsBuilder {
+	b.options.To = to
+	return b
+}
+
+// Build returns the configured SmsOptions.
+func (b *SmsOptionsBuilder) Build() *SmsOptions {
+	return b.options
+}
+
+// Sms sends a text message through Twilio.
+type Sms struct {
+	options *SmsOptions
+}
+
+// NewSms validates opts and returns a Sms sender that uses a copy of them.
+func NewSms(opts *SmsOptions) (*Sms, error) {
+	if err := validateOptions("sms", opts); err != nil {
+		return nil, err
+	}
+	options := *opts
+	return &Sms{options: &options}, nil
+}
+
+func (sms *Sms) Send(m message.Message) bool {
+
+	accountSid := sms.options.AccountSID
+	authToken := sms.options.AuthToken
+
+	from := sms.options.From
+	to := sms.options.To
 	message := "This is a test message"
 	if err := sendTwilioSMS(twilioAPIBase, accountSid, authToken, from, to, message); err != nil {
 		log.Print(err)

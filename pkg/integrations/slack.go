@@ -25,28 +25,93 @@ type slackSetupError string
 func (err slackSetupError) Error() string          { return string(err) }
 func (err slackSetupError) DeliveryRejected() bool { return true }
 
-type Slack struct {
-	DeliveryMode string `json:"deliveryMode,omitempty"`
-	Token        string `json:"token,omitempty"`
-	Channel      string `json:"channel,omitempty"`
-	Hook         string `json:"hook,omitempty"`
-	Username     string `json:"username,omitempty"`
+// SlackOptions configures Slack.
+type SlackOptions struct {
+	// DeliveryMode is the delivery mode: "webhook" or "bot"; empty uses the fields that are set.
+	DeliveryMode string `json:"deliveryMode,omitempty" validate:"omitempty,oneof=webhook bot"`
+	// Token is the bot token.
+	Token string `json:"token,omitempty"`
+	// Channel is the channel ID the bot posts to.
+	Channel string `json:"channel,omitempty"`
+	// Hook is the incoming webhook URL.
+	Hook string `json:"hook,omitempty" validate:"omitempty,url"`
+	// Username is the name webhook messages are posted as.
+	Username string `json:"username,omitempty"`
 }
 
-func (s Slack) Send(m message.Message) error {
+// SlackOptionsBuilder builds SlackOptions.
+type SlackOptionsBuilder struct {
+	options *SlackOptions
+}
+
+// NewSlackOptions starts building SlackOptions.
+func NewSlackOptions() *SlackOptionsBuilder {
+	return &SlackOptionsBuilder{options: &SlackOptions{}}
+}
+
+// SetDeliveryMode sets the delivery mode: "webhook" or "bot"; empty uses the fields that are set.
+func (b *SlackOptionsBuilder) SetDeliveryMode(deliveryMode string) *SlackOptionsBuilder {
+	b.options.DeliveryMode = deliveryMode
+	return b
+}
+
+// SetToken sets the bot token.
+func (b *SlackOptionsBuilder) SetToken(token string) *SlackOptionsBuilder {
+	b.options.Token = token
+	return b
+}
+
+// SetChannel sets the channel ID the bot posts to.
+func (b *SlackOptionsBuilder) SetChannel(channel string) *SlackOptionsBuilder {
+	b.options.Channel = channel
+	return b
+}
+
+// SetHook sets the incoming webhook URL.
+func (b *SlackOptionsBuilder) SetHook(hook string) *SlackOptionsBuilder {
+	b.options.Hook = hook
+	return b
+}
+
+// SetUsername sets the name webhook messages are posted as.
+func (b *SlackOptionsBuilder) SetUsername(username string) *SlackOptionsBuilder {
+	b.options.Username = username
+	return b
+}
+
+// Build returns the configured SlackOptions.
+func (b *SlackOptionsBuilder) Build() *SlackOptions {
+	return b.options
+}
+
+// Slack sends messages to a Slack channel, through a webhook or a bot.
+type Slack struct {
+	options *SlackOptions
+}
+
+// NewSlack validates opts and returns a Slack sender that uses a copy of them.
+func NewSlack(opts *SlackOptions) (*Slack, error) {
+	if err := validateOptions("slack", opts); err != nil {
+		return nil, err
+	}
+	options := *opts
+	return &Slack{options: &options}, nil
+}
+
+func (s *Slack) Send(m message.Message) error {
 	return s.SendWithContext(context.Background(), m)
 }
 
-func (s Slack) SendWithContext(ctx context.Context, m message.Message) error {
+func (s *Slack) SendWithContext(ctx context.Context, m message.Message) error {
 	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
 	defer cancel()
 
 	client := &http.Client{Timeout: 30 * time.Second}
-	api := slack.New(s.Token, slack.OptionHTTPClient(client))
+	api := slack.New(s.options.Token, slack.OptionHTTPClient(client))
 	return s.send(ctx, m, client, api)
 }
 
-func (s Slack) send(ctx context.Context, m message.Message, client *http.Client, api *slack.Client) error {
+func (s *Slack) send(ctx context.Context, m message.Message, client *http.Client, api *slack.Client) error {
 	text := m.Body
 	attachments := []slack.Attachment{}
 	if len(m.Media) > 0 {
@@ -62,35 +127,35 @@ func (s Slack) send(ctx context.Context, m message.Message, client *http.Client,
 	}
 
 	mode, err := (models.Slack{
-		DeliveryMode: s.DeliveryMode, Apikey: s.Token, Channel: s.Channel,
+		DeliveryMode: s.options.DeliveryMode, Apikey: s.options.Token, Channel: s.options.Channel,
 	}).ResolveDeliveryMode()
 	if err != nil {
 		return slackSetupError(err.Error())
 	}
 	if mode == models.SlackDeliveryModeBot {
-		if s.Token == "" || s.Channel == "" {
+		if s.options.Token == "" || s.options.Channel == "" {
 			return slackSetupError("Slack bot delivery requires both a bot token and channel ID")
 		}
 		if len(m.Media) > 0 && m.Media[0].Type == "video" {
 			return s.uploadVideo(ctx, m, client, api)
 		}
-		_, _, err := api.PostMessageContext(ctx, s.Channel,
+		_, _, err := api.PostMessageContext(ctx, s.options.Channel,
 			slack.MsgOptionText(text, false), slack.MsgOptionAttachments(attachments...))
 		return err
 	}
 
-	if s.Hook == "" {
+	if s.options.Hook == "" {
 		return slackSetupError("Slack webhook delivery requires a webhook URL")
 	}
 	msg := slack.WebhookMessage{
-		Username:    s.Username,
+		Username:    s.options.Username,
 		Text:        text,
 		Attachments: attachments,
 	}
-	return slack.PostWebhookCustomHTTPContext(ctx, s.Hook, client, &msg)
+	return slack.PostWebhookCustomHTTPContext(ctx, s.options.Hook, client, &msg)
 }
 
-func (s Slack) uploadVideo(ctx context.Context, m message.Message, client *http.Client, api *slack.Client) error {
+func (s *Slack) uploadVideo(ctx context.Context, m message.Message, client *http.Client, api *slack.Client) error {
 	request, err := http.NewRequestWithContext(ctx, http.MethodGet, m.Media[0].Url, nil)
 	if err != nil {
 		return slackSetupError("invalid Slack video download URL")
@@ -144,7 +209,7 @@ func (s Slack) uploadVideo(ctx context.Context, m message.Message, client *http.
 		Filename:       "recording.mp4",
 		Title:          title,
 		InitialComment: m.Body,
-		Channel:        s.Channel,
+		Channel:        s.options.Channel,
 	})
 	if err != nil {
 		return fmt.Errorf("upload Slack video: %w", err)

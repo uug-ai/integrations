@@ -8,15 +8,59 @@ import (
 	"github.com/uug-ai/integrations/pkg/message"
 )
 
-type Telegram struct {
-	Token   string `json:"token,omitempty"`
-	Channel string `json:"channel,omitempty"`
+// TelegramOptions configures Telegram.
+type TelegramOptions struct {
+	// Token is the bot token.
+	Token string `json:"token,omitempty" validate:"required"`
+	// Channel is the channel name, or c<id>_<hash> for a private channel.
+	Channel string `json:"channel,omitempty" validate:"required"`
 }
 
-func (t Telegram) Send(message message.Message) bool {
+// TelegramOptionsBuilder builds TelegramOptions.
+type TelegramOptionsBuilder struct {
+	options *TelegramOptions
+}
 
-	channelName := t.Channel //"c1375189391_8694429167782276799"
-	token := t.Token         //"592498002:AAHYGK-EEUXV3oFtf3mVUJEPWxCYfNkXdC0"
+// NewTelegramOptions starts building TelegramOptions.
+func NewTelegramOptions() *TelegramOptionsBuilder {
+	return &TelegramOptionsBuilder{options: &TelegramOptions{}}
+}
+
+// SetToken sets the bot token.
+func (b *TelegramOptionsBuilder) SetToken(token string) *TelegramOptionsBuilder {
+	b.options.Token = token
+	return b
+}
+
+// SetChannel sets the channel name, or c<id>_<hash> for a private channel.
+func (b *TelegramOptionsBuilder) SetChannel(channel string) *TelegramOptionsBuilder {
+	b.options.Channel = channel
+	return b
+}
+
+// Build returns the configured TelegramOptions.
+func (b *TelegramOptionsBuilder) Build() *TelegramOptions {
+	return b.options
+}
+
+// Telegram posts the message to a Telegram channel with a bot.
+type Telegram struct {
+	options *TelegramOptions
+}
+
+// NewTelegram validates opts and returns a Telegram sender that uses a copy of them.
+func NewTelegram(opts *TelegramOptions) (*Telegram, error) {
+	if err := validateOptions("telegram", opts); err != nil {
+		return nil, err
+	}
+	options := *opts
+	return &Telegram{options: &options}, nil
+}
+
+func (t *Telegram) Send(message message.Message) bool {
+
+	channelName := t.options.Channel //"c1375189391_8694429167782276799"
+	token := t.options.Token         //"592498002:AAHYGK-EEUXV3oFtf3mVUJEPWxCYfNkXdC0"
 
 	// Create a bot with BotFather
 	// /newbot

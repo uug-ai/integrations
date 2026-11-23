@@ -26,7 +26,7 @@ func TestWebhookSendWithContextAcknowledgement(t *testing.T) {
 				}
 			}))
 			defer server.Close()
-			err := (Webhook{Url: server.URL + "/private-token"}).SendWithContext(context.Background(), message.Message{})
+			err := (&Webhook{options: &WebhookOptions{Url: server.URL + "/private-token"}}).SendWithContext(context.Background(), message.Message{})
 			if status < 300 {
 				if err != nil {
 					t.Fatalf("successful acknowledgement failed: %v", err)
@@ -47,7 +47,7 @@ func TestWebhookSendWithContextAcknowledgement(t *testing.T) {
 func TestWebhookSendWithContextPreservesCancellation(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
-	err := (Webhook{Url: "http://127.0.0.1:1/private-token"}).SendWithContext(ctx, message.Message{})
+	err := (&Webhook{options: &WebhookOptions{Url: "http://127.0.0.1:1/private-token"}}).SendWithContext(ctx, message.Message{})
 	if !errors.Is(err, context.Canceled) {
 		t.Fatalf("error = %v, want cancellation", err)
 	}

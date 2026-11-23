@@ -3,6 +3,7 @@ package integrations
 import (
 	"fmt"
 	"os"
+	"strconv"
 
 	"github.com/uug-ai/integrations/pkg/message"
 )
@@ -30,41 +31,42 @@ func (err UnsupportedEmailProviderError) Error() string {
 // SMTPFromEnv builds an SMTP sender to emailTo that renders the named template
 // from templates, using SMTP_SERVER, SMTP_PORT, SMTP_USERNAME, SMTP_PASSWORD
 // and EMAIL_FROM.
-func SMTPFromEnv(emailTo, templateId string, templates Templates) SMTP {
-	return SMTP{
-		Server:     os.Getenv("SMTP_SERVER"),
-		Port:       os.Getenv("SMTP_PORT"),
-		Username:   os.Getenv("SMTP_USERNAME"),
-		Password:   os.Getenv("SMTP_PASSWORD"),
-		EmailFrom:  os.Getenv("EMAIL_FROM"),
-		EmailTo:    emailTo,
-		TemplateId: templateId,
-		Templates:  templates,
-	}
+func SMTPFromEnv(emailTo, templateId string, templates Templates) (*SMTP, error) {
+	port, _ := strconv.Atoi(os.Getenv("SMTP_PORT"))
+	return NewSMTP(NewSMTPOptions().
+		SetServer(os.Getenv("SMTP_SERVER")).
+		SetPort(port).
+		SetUsername(os.Getenv("SMTP_USERNAME")).
+		SetPassword(os.Getenv("SMTP_PASSWORD")).
+		SetEmailFrom(os.Getenv("EMAIL_FROM")).
+		SetEmailTo(emailTo).
+		SetTemplateId(templateId).
+		SetTemplates(templates).
+		Build())
 }
 
 // MailgunFromEnv builds a Mailgun sender to emailTo with the given template,
 // using MAILGUN_DOMAIN, MAILGUN_API_KEY and EMAIL_FROM.
-func MailgunFromEnv(emailTo, templateId string) Mail {
-	return Mail{
-		Domain:     os.Getenv("MAILGUN_DOMAIN"),
-		ApiKey:     os.Getenv("MAILGUN_API_KEY"),
-		EmailFrom:  os.Getenv("EMAIL_FROM"),
-		EmailTo:    emailTo,
-		TemplateId: templateId,
-	}
+func MailgunFromEnv(emailTo, templateId string) (*Mail, error) {
+	return NewMail(NewMailOptions().
+		SetDomain(os.Getenv("MAILGUN_DOMAIN")).
+		SetApiKey(os.Getenv("MAILGUN_API_KEY")).
+		SetEmailFrom(os.Getenv("EMAIL_FROM")).
+		SetEmailTo(emailTo).
+		SetTemplateId(templateId).
+		Build())
 }
 
 // SendgridFromEnv builds a SendGrid sender to emailTo with the given template,
 // using SENDGRID_API_KEY, EMAIL_FROM and EMAIL_FROM_DISPLAYNAME.
-func SendgridFromEnv(emailTo, templateId string) Sendgrid {
-	return Sendgrid{
-		ApiKey:           os.Getenv("SENDGRID_API_KEY"),
-		EmailFrom:        os.Getenv("EMAIL_FROM"),
-		EmailFromDisplay: os.Getenv("EMAIL_FROM_DISPLAYNAME"),
-		EmailTo:          emailTo,
-		TemplateId:       templateId,
-	}
+func SendgridFromEnv(emailTo, templateId string) (*Sendgrid, error) {
+	return NewSendgrid(NewSendgridOptions().
+		SetApiKey(os.Getenv("SENDGRID_API_KEY")).
+		SetEmailFrom(os.Getenv("EMAIL_FROM")).
+		SetEmailFromDisplay(os.Getenv("EMAIL_FROM_DISPLAYNAME")).
+		SetEmailTo(emailTo).
+		SetTemplateId(templateId).
+		Build())
 }
 
 // EmailFromEnv builds the sender for the named mail provider (smtp, mailgun or
@@ -74,18 +76,30 @@ func SendgridFromEnv(emailTo, templateId string) Sendgrid {
 func EmailFromEnv(provider, emailTo, templateId string, templates Templates) (Email, error) {
 	switch provider {
 	case EmailProviderSMTP:
-		return SMTPFromEnv(emailTo, templateId, templates), nil
+		smtp, err := SMTPFromEnv(emailTo, templateId, templates)
+		if err != nil {
+			return nil, err
+		}
+		return smtp, nil
 	case EmailProviderMailgun:
-		return MailgunFromEnv(emailTo, templateId), nil
+		mail, err := MailgunFromEnv(emailTo, templateId)
+		if err != nil {
+			return nil, err
+		}
+		return mail, nil
 	case EmailProviderSendgrid:
-		return sendgridEmail{SendgridFromEnv(emailTo, templateId)}, nil
+		sendgrid, err := SendgridFromEnv(emailTo, templateId)
+		if err != nil {
+			return nil, err
+		}
+		return sendgridEmail{sendgrid}, nil
 	}
 	return nil, UnsupportedEmailProviderError(provider)
 }
 
 // sendgridEmail adapts Sendgrid, which does not report delivery errors, to Email.
 type sendgridEmail struct {
-	sendgrid Sendgrid
+	sendgrid *Sendgrid
 }
 
 func (email sendgridEmail) Send(m message.Message) error {

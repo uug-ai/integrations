@@ -12,33 +12,117 @@ import (
 	"gopkg.in/gomail.v2"
 )
 
-type SMTP struct {
-	Server     string `json:"server,omitempty"`
-	Port       string `json:"port,omitempty"`
-	Username   string `json:"username,omitempty"`
-	Password   string `json:"password,omitempty"`
-	EmailFrom  string `json:"email_from,omitempty"`
-	EmailTo    string `json:"email_to,omitempty"`
+// SMTPOptions configures SMTP.
+type SMTPOptions struct {
+	// Server is the SMTP server host.
+	Server string `json:"server,omitempty" validate:"required"`
+	// Port is the SMTP server port.
+	Port int `json:"port,omitempty" validate:"required,gt=0,lte=65535"`
+	// Username is the SMTP user.
+	Username string `json:"username,omitempty"`
+	// Password is the SMTP password.
+	Password string `json:"password,omitempty"`
+	// EmailFrom is the sender address.
+	EmailFrom string `json:"email_from,omitempty" validate:"required"`
+	// EmailTo is the recipient address.
+	EmailTo string `json:"email_to,omitempty" validate:"required"`
+	// TemplateId is the name of the template to render.
 	TemplateId string `json:"template_id,omitempty"`
-	// Templates holds the email templates TemplateId names.
-	Templates Templates `json:"-"`
+	// Templates is the email templates TemplateId names.
+	Templates Templates `json:"-" validate:"-"`
 }
 
-func (smtp SMTP) Send(message message.Message) error {
-	port, _ := strconv.Atoi(smtp.Port)
-	d := gomail.NewDialer(smtp.Server, port, smtp.Username, smtp.Password)
+// SMTPOptionsBuilder builds SMTPOptions.
+type SMTPOptionsBuilder struct {
+	options *SMTPOptions
+}
+
+// NewSMTPOptions starts building SMTPOptions.
+func NewSMTPOptions() *SMTPOptionsBuilder {
+	return &SMTPOptionsBuilder{options: &SMTPOptions{}}
+}
+
+// SetServer sets the SMTP server host.
+func (b *SMTPOptionsBuilder) SetServer(server string) *SMTPOptionsBuilder {
+	b.options.Server = server
+	return b
+}
+
+// SetPort sets the SMTP server port.
+func (b *SMTPOptionsBuilder) SetPort(port int) *SMTPOptionsBuilder {
+	b.options.Port = port
+	return b
+}
+
+// SetUsername sets the SMTP user.
+func (b *SMTPOptionsBuilder) SetUsername(username string) *SMTPOptionsBuilder {
+	b.options.Username = username
+	return b
+}
+
+// SetPassword sets the SMTP password.
+func (b *SMTPOptionsBuilder) SetPassword(password string) *SMTPOptionsBuilder {
+	b.options.Password = password
+	return b
+}
+
+// SetEmailFrom sets the sender address.
+func (b *SMTPOptionsBuilder) SetEmailFrom(emailFrom string) *SMTPOptionsBuilder {
+	b.options.EmailFrom = emailFrom
+	return b
+}
+
+// SetEmailTo sets the recipient address.
+func (b *SMTPOptionsBuilder) SetEmailTo(emailTo string) *SMTPOptionsBuilder {
+	b.options.EmailTo = emailTo
+	return b
+}
+
+// SetTemplateId sets the name of the template to render.
+func (b *SMTPOptionsBuilder) SetTemplateId(templateId string) *SMTPOptionsBuilder {
+	b.options.TemplateId = templateId
+	return b
+}
+
+// SetTemplates sets the email templates TemplateId names.
+func (b *SMTPOptionsBuilder) SetTemplates(templates Templates) *SMTPOptionsBuilder {
+	b.options.Templates = templates
+	return b
+}
+
+// Build returns the configured SMTPOptions.
+func (b *SMTPOptionsBuilder) Build() *SMTPOptions {
+	return b.options
+}
+
+// SMTP sends the message as an email rendered from a template.
+type SMTP struct {
+	options *SMTPOptions
+}
+
+// NewSMTP validates opts and returns a SMTP sender that uses a copy of them.
+func NewSMTP(opts *SMTPOptions) (*SMTP, error) {
+	if err := validateOptions("smtp", opts); err != nil {
+		return nil, err
+	}
+	options := *opts
+	return &SMTP{options: &options}, nil
+}
+
+func (smtp *SMTP) Send(message message.Message) error {
+	d := gomail.NewDialer(smtp.options.Server, smtp.options.Port, smtp.options.Username, smtp.options.Password)
 	d.TLSConfig = &tls.Config{InsecureSkipVerify: true}
 
 	m := gomail.NewMessage()
-	m.SetHeader("From", smtp.EmailFrom)
-	m.SetHeader("To", smtp.EmailTo)
+	m.SetHeader("From", smtp.options.EmailFrom)
+	m.SetHeader("To", smtp.options.EmailTo)
 	// Strip HTML tags (e.g. <br>) from title for the plain-text subject line.
 	subject := strings.ReplaceAll(message.Title, "<br>", " ")
 	m.SetHeader("Subject", subject)
 	timeNow := time.Now().Unix()
 	m.SetHeader("Message-Id", "<"+strconv.FormatInt(timeNow, 10)+"@uug.ai>")
 
-	template := smtp.Templates.Get(smtp.TemplateId)
+	template := smtp.options.Templates.Get(smtp.options.TemplateId)
 	m.SetBody("text/plain", ReplaceValues(template.Text, message))
 	m.AddAlternative("text/html", ReplaceValues(template.HTML, message))
 

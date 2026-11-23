@@ -45,12 +45,15 @@ func TestTemplatesRejectPathsOutsideTheSource(t *testing.T) {
 }
 
 func TestSMTPFromEnvKeepsTemplates(t *testing.T) {
+	t.Setenv("SMTP_SERVER", "smtp.example.com")
+	t.Setenv("SMTP_PORT", "25")
+	t.Setenv("EMAIL_FROM", "hub@example.com")
 	templates := Templates{Builtin: os.DirFS(t.TempDir())}
 	email, err := EmailFromEnv(EmailProviderSMTP, "to@example.com", "detection", templates)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got := email.(SMTP).Templates; got != templates {
+	if got := email.(*SMTP).options.Templates; got != templates {
 		t.Fatalf("templates = %+v, want %+v", got, templates)
 	}
 }

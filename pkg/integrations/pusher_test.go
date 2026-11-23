@@ -1,6 +1,7 @@
 package integrations
 
 import (
+	"errors"
 	"strings"
 	"testing"
 
@@ -84,8 +85,23 @@ func TestPusherFromEnvReadsAppCredentials(t *testing.T) {
 	t.Setenv("PUSHER_KEY", "key")
 	t.Setenv("PUSHER_SECRET", "secret")
 	t.Setenv("PUSHER_CLUSTER", "eu")
-	want := Pusher{AppID: "1", Key: "key", Secret: "secret", Cluster: "eu", Channel: "notification"}
-	if got := PusherFromEnv("notification"); got != want {
+	pusher, err := PusherFromEnv("notification")
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := PusherOptions{AppID: "1", Key: "key", Secret: "secret", Cluster: "eu", Channel: "notification"}
+	if got := *pusher.options; got != want {
 		t.Fatalf("PusherFromEnv = %+v, want %+v", got, want)
+	}
+}
+
+func TestPusherFromEnvWithoutCredentialsIsRejected(t *testing.T) {
+	for _, name := range []string{"PUSHER_APP_ID", "PUSHER_KEY", "PUSHER_SECRET", "PUSHER_CLUSTER"} {
+		t.Setenv(name, "")
+	}
+	_, err := PusherFromEnv("notification")
+	var rejected interface{ DeliveryRejected() bool }
+	if !errors.As(err, &rejected) || !rejected.DeliveryRejected() {
+		t.Fatalf("error = %v, want rejected options", err)
 	}
 }

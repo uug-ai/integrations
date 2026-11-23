@@ -62,34 +62,97 @@ type PusherMedia struct {
 	Type  string `json:"type,omitempty"`
 }
 
-// Pusher triggers an event on the recipient's Pusher channel. AppID, Key,
-// Secret and Cluster identify the Pusher app; Channel is the event name.
+// PusherOptions configures Pusher.
+type PusherOptions struct {
+	// AppID is the Pusher app ID.
+	AppID string `json:"app_id,omitempty" validate:"required"`
+	// Key is the Pusher app key.
+	Key string `json:"key,omitempty" validate:"required"`
+	// Secret is the Pusher app secret.
+	Secret string `json:"secret,omitempty" validate:"required"`
+	// Cluster is the Pusher cluster.
+	Cluster string `json:"cluster,omitempty" validate:"required"`
+	// Channel is the event name.
+	Channel string `json:"channel,omitempty" validate:"required"`
+}
+
+// PusherOptionsBuilder builds PusherOptions.
+type PusherOptionsBuilder struct {
+	options *PusherOptions
+}
+
+// NewPusherOptions starts building PusherOptions.
+func NewPusherOptions() *PusherOptionsBuilder {
+	return &PusherOptionsBuilder{options: &PusherOptions{}}
+}
+
+// SetAppID sets the Pusher app ID.
+func (b *PusherOptionsBuilder) SetAppID(appID string) *PusherOptionsBuilder {
+	b.options.AppID = appID
+	return b
+}
+
+// SetKey sets the Pusher app key.
+func (b *PusherOptionsBuilder) SetKey(key string) *PusherOptionsBuilder {
+	b.options.Key = key
+	return b
+}
+
+// SetSecret sets the Pusher app secret.
+func (b *PusherOptionsBuilder) SetSecret(secret string) *PusherOptionsBuilder {
+	b.options.Secret = secret
+	return b
+}
+
+// SetCluster sets the Pusher cluster.
+func (b *PusherOptionsBuilder) SetCluster(cluster string) *PusherOptionsBuilder {
+	b.options.Cluster = cluster
+	return b
+}
+
+// SetChannel sets the event name.
+func (b *PusherOptionsBuilder) SetChannel(channel string) *PusherOptionsBuilder {
+	b.options.Channel = channel
+	return b
+}
+
+// Build returns the configured PusherOptions.
+func (b *PusherOptionsBuilder) Build() *PusherOptions {
+	return b.options
+}
+
+// Pusher triggers an event on the recipient's Pusher channel (Message.User).
 type Pusher struct {
-	AppID   string `json:"app_id,omitempty"`
-	Key     string `json:"key,omitempty"`
-	Secret  string `json:"secret,omitempty"`
-	Cluster string `json:"cluster,omitempty"`
-	Channel string `json:"channel,omitempty"`
+	options *PusherOptions
+}
+
+// NewPusher validates opts and returns a Pusher sender that uses a copy of them.
+func NewPusher(opts *PusherOptions) (*Pusher, error) {
+	if err := validateOptions("pusher", opts); err != nil {
+		return nil, err
+	}
+	options := *opts
+	return &Pusher{options: &options}, nil
 }
 
 // PusherFromEnv builds a Pusher sender for the given event name, using
 // PUSHER_APP_ID, PUSHER_KEY, PUSHER_SECRET and PUSHER_CLUSTER.
-func PusherFromEnv(channel string) Pusher {
-	return Pusher{
-		AppID:   os.Getenv("PUSHER_APP_ID"),
-		Key:     os.Getenv("PUSHER_KEY"),
-		Secret:  os.Getenv("PUSHER_SECRET"),
-		Cluster: os.Getenv("PUSHER_CLUSTER"),
-		Channel: channel,
-	}
+func PusherFromEnv(channel string) (*Pusher, error) {
+	return NewPusher(NewPusherOptions().
+		SetAppID(os.Getenv("PUSHER_APP_ID")).
+		SetKey(os.Getenv("PUSHER_KEY")).
+		SetSecret(os.Getenv("PUSHER_SECRET")).
+		SetCluster(os.Getenv("PUSHER_CLUSTER")).
+		SetChannel(channel).
+		Build())
 }
 
-func (pusher Pusher) client() push.Client {
+func (pusher *Pusher) client() push.Client {
 	return push.Client{
-		AppID:   pusher.AppID,
-		Key:     pusher.Key,
-		Secret:  pusher.Secret,
-		Cluster: pusher.Cluster,
+		AppID:   pusher.options.AppID,
+		Key:     pusher.options.Key,
+		Secret:  pusher.options.Secret,
+		Cluster: pusher.options.Cluster,
 	}
 }
 
@@ -113,7 +176,7 @@ func buildPusherPayload(message message.Message) PusherMessageWrapper {
 	return pusherMessage
 }
 
-func (pusher Pusher) SendNotification(message message.Message) bool {
+func (pusher *Pusher) SendNotification(message message.Message) bool {
 
 	if !validPusherChannel(message.User) {
 		log.Printf("pusher: invalid channel %q (must be the user's username, not a display name); dropping notification", message.User)
@@ -125,22 +188,22 @@ func (pusher Pusher) SendNotification(message message.Message) bool {
 	pusherMessage := buildPusherPayload(message)
 
 	// trigger an event on the users channel, along with a data payload.
-	client.Trigger(message.User, pusher.Channel, pusherMessage)
+	client.Trigger(message.User, pusher.options.Channel, pusherMessage)
 
 	return true
 }
 
 // Trigger sends the message on the recipient's channel (message.User) and
 // reports why it was not delivered.
-func (pusher Pusher) Trigger(message message.Message) error {
+func (pusher *Pusher) Trigger(message message.Message) error {
 	if !validPusherChannel(message.User) {
 		return fmt.Errorf("pusher: invalid channel %q (must be the user's username, not a display name)", message.User)
 	}
 	client := pusher.client()
-	return client.Trigger(message.User, pusher.Channel, message)
+	return client.Trigger(message.User, pusher.options.Channel, message)
 }
 
-func (pusher Pusher) Send(message message.Message) bool {
+func (pusher *Pusher) Send(message message.Message) bool {
 
 	if !validPusherChannel(message.User) {
 		log.Printf("pusher: invalid channel %q (must be the user's username, not a display name); dropping notification", message.User)
@@ -150,7 +213,7 @@ func (pusher Pusher) Send(message message.Message) bool {
 	client := pusher.client()
 
 	// trigger an event on the users channel, along with a data payload.
-	client.Trigger(message.User, pusher.Channel, message)
+	client.Trigger(message.User, pusher.options.Channel, message)
 
 	return true
 }

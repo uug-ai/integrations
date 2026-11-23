@@ -47,7 +47,7 @@ func TestSlackSendWebhookCompatibility(t *testing.T) {
 				_, _ = io.WriteString(w, "ok")
 			}))
 			defer server.Close()
-			if err := (Slack{Hook: server.URL, Username: "Alerts"}).Send(msg); err != nil {
+			if err := slackFor(SlackOptions{Hook: server.URL, Username: "Alerts"}).Send(msg); err != nil {
 				t.Fatal(err)
 			}
 		})
@@ -144,7 +144,7 @@ func TestSlackUploadVideo(t *testing.T) {
 
 			client := server.Client()
 			api := slack.New("test-token", slack.OptionAPIURL(server.URL+"/"), slack.OptionHTTPClient(client))
-			sender := Slack{DeliveryMode: "bot", Token: "test-token", Channel: "C123", Hook: server.URL + "/hook"}
+			sender := slackFor(SlackOptions{DeliveryMode: "bot", Token: "test-token", Channel: "C123", Hook: server.URL + "/hook"})
 			err := sender.send(context.Background(), message.Message{
 				Title: test.title, Body: "Motion detected",
 				Media: []message.Media{{Type: "video", Url: server.URL + "/recording.mp4?signature=private"}},
@@ -186,7 +186,7 @@ func TestSlackSelectedModeDoesNotFallbackOnProviderFailure(t *testing.T) {
 			defer server.Close()
 			client := server.Client()
 			api := slack.New("saved-token", slack.OptionAPIURL(server.URL+"/"), slack.OptionHTTPClient(client))
-			sender := Slack{DeliveryMode: mode, Token: "saved-token", Channel: "C123", Hook: server.URL + "/hook"}
+			sender := slackFor(SlackOptions{DeliveryMode: mode, Token: "saved-token", Channel: "C123", Hook: server.URL + "/hook"})
 			if err := sender.send(context.Background(), message.Message{Body: "Test"}, client, api); err == nil {
 				t.Fatal("provider failure was reported as success")
 			}
@@ -230,7 +230,7 @@ func TestSlackBotNonVideoMessages(t *testing.T) {
 			defer server.Close()
 			client := server.Client()
 			api := slack.New("test-token", slack.OptionAPIURL(server.URL+"/"), slack.OptionHTTPClient(client))
-			err := (Slack{Token: "test-token", Channel: "C123"}).send(context.Background(),
+			err := slackFor(SlackOptions{Token: "test-token", Channel: "C123"}).send(context.Background(),
 				message.Message{Body: "Motion detected", Media: media}, client, api)
 			if err != nil {
 				t.Fatal(err)
@@ -285,7 +285,7 @@ func TestSlackUploadFailuresDoNotFallBackToWebhook(t *testing.T) {
 			defer server.Close()
 			client := server.Client()
 			api := slack.New("test-token", slack.OptionAPIURL(server.URL+"/"), slack.OptionHTTPClient(client))
-			err := (Slack{Token: "test-token", Channel: "C123", Hook: server.URL + "/hook"}).send(context.Background(),
+			err := slackFor(SlackOptions{Token: "test-token", Channel: "C123", Hook: server.URL + "/hook"}).send(context.Background(),
 				message.Message{Media: []message.Media{{Type: "video", Url: server.URL + "/video?signature=private"}}}, client, api)
 			if err == nil || !strings.Contains(err.Error(), test.wantError) {
 				t.Fatalf("error = %v, want %q", err, test.wantError)
@@ -308,7 +308,8 @@ func TestSlackUploadFailuresDoNotFallBackToWebhook(t *testing.T) {
 }
 
 func TestSlackBotRequiresTokenAndChannel(t *testing.T) {
-	for _, sender := range []Slack{{Token: "test-token"}, {Channel: "C123"}, {DeliveryMode: "bot", Hook: "https://unused.example/hook"}} {
+	for _, options := range []SlackOptions{{Token: "test-token"}, {Channel: "C123"}, {DeliveryMode: "bot", Hook: "https://unused.example/hook"}} {
+		sender := slackFor(options)
 		if err := sender.Send(message.Message{}); err == nil || !strings.Contains(err.Error(), "both a bot token and channel ID") {
 			t.Fatalf("error = %v, want configuration error", err)
 		}
@@ -333,7 +334,7 @@ func TestSlackSelectedDeliveryMode(t *testing.T) {
 			defer server.Close()
 			client := server.Client()
 			api := slack.New("saved-token", slack.OptionAPIURL(server.URL+"/"), slack.OptionHTTPClient(client))
-			sender := Slack{DeliveryMode: mode, Token: "saved-token", Channel: "C123", Hook: server.URL + "/hook"}
+			sender := slackFor(SlackOptions{DeliveryMode: mode, Token: "saved-token", Channel: "C123", Hook: server.URL + "/hook"})
 			err := sender.send(context.Background(), message.Message{Body: "Test"}, client, api)
 			if err != nil {
 				t.Fatal(err)
@@ -347,10 +348,11 @@ func TestSlackSelectedDeliveryMode(t *testing.T) {
 			}
 		})
 	}
-	for _, sender := range []Slack{
+	for _, options := range []SlackOptions{
 		{DeliveryMode: "unknown", Token: "saved-token", Channel: "C123"},
 		{DeliveryMode: "webhook", Token: "saved-token", Channel: "C123"},
 	} {
+		sender := slackFor(options)
 		if err := sender.Send(message.Message{}); err == nil {
 			t.Fatal("invalid selected mode silently fell back to another destination")
 		}
@@ -360,17 +362,18 @@ func TestSlackSelectedDeliveryMode(t *testing.T) {
 func TestSlackSendCancellation(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
-	for _, sender := range []Slack{
+	for _, options := range []SlackOptions{
 		{Hook: "http://127.0.0.1:1/hook"},
 		{Token: "test-token", Channel: "C123"},
 	} {
+		sender := slackFor(options)
 		err := sender.SendWithContext(ctx, message.Message{
 			Media: []message.Media{{Type: "video", Url: "http://127.0.0.1:1/video?signature=private"}},
 		})
 		if !errors.Is(err, context.Canceled) {
 			t.Fatalf("error = %v, want cancellation", err)
 		}
-		if sender.Token != "" && strings.Contains(err.Error(), "signature") {
+		if sender.options.Token != "" && strings.Contains(err.Error(), "signature") {
 			t.Fatalf("download error exposed a signed URL: %v", err)
 		}
 	}
@@ -383,7 +386,7 @@ func TestSlackRejectsOversizedDownload(t *testing.T) {
 		w.Header().Set("Content-Length", strconv.FormatInt(slackMaxVideoBytes+1, 10))
 	}))
 	defer server.Close()
-	err := (Slack{Token: "test-token", Channel: "C123"}).Send(message.Message{
+	err := slackFor(SlackOptions{Token: "test-token", Channel: "C123"}).Send(message.Message{
 		Media: []message.Media{{Type: "video", Url: server.URL}},
 	})
 	if err == nil || !strings.Contains(err.Error(), "1 GB") {
@@ -429,12 +432,13 @@ func assertSlackTempFilesCleaned(t *testing.T, dir string) {
 // classifies them as rejected.
 func TestSlackSetupErrorsAreRejections(t *testing.T) {
 	var rejected interface{ DeliveryRejected() bool }
-	for _, sender := range []Slack{
+	for _, options := range []SlackOptions{
 		{Token: "xoxb-token"},
 		{DeliveryMode: "unknown", Token: "xoxb-token", Channel: "C123"},
 		{DeliveryMode: "webhook", Token: "xoxb-token", Channel: "C123"},
 		{DeliveryMode: "bot", Hook: "https://unused.example/hook"},
 	} {
+		sender := slackFor(options)
 		err := sender.Send(message.Message{})
 		if !errors.As(err, &rejected) || !rejected.DeliveryRejected() {
 			t.Fatalf("invalid configuration error = %#v, want a rejected delivery", err)
@@ -443,4 +447,10 @@ func TestSlackSetupErrorsAreRejections(t *testing.T) {
 	if _, err := copySlackVideo(io.Discard, strings.NewReader("")); !errors.As(err, &rejected) {
 		t.Fatalf("empty video error = %#v, want a rejected delivery", err)
 	}
+}
+
+// slackFor builds a Slack sender without validating the options, so tests can
+// reach the checks made while sending.
+func slackFor(options SlackOptions) *Slack {
+	return &Slack{options: &options}
 }
