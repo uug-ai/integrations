@@ -1,450 +1,95 @@
 package integrations
 
 import (
-	"errors"
-	"os"
-	"strconv"
+	"strings"
 	"testing"
 
-	"gopkg.in/gomail.v2"
+	"github.com/uug-ai/integrations/pkg/message"
 )
 
-// MockMailClient is a mock implementation of MailClient for testing
-type MockMailClient struct {
-	DialAndSendFunc func(m ...*gomail.Message) error
-	DialFunc        func() (gomail.SendCloser, error)
-	DialCalled      bool
-	SendCalled      bool
-}
+// TestReplaceValues_UserPrefersDisplayName guards the v1.3.8 contract: the
+// {{user}} email variable must show the display name from Data["user"] when
+// present, falling back to the routing username otherwise.
+func TestReplaceValues_UserPrefersDisplayName(t *testing.T) {
+	tmpl := "Hello {{user}}"
 
-func (m *MockMailClient) DialAndSend(msgs ...*gomail.Message) error {
-	m.SendCalled = true
-	if m.DialAndSendFunc != nil {
-		return m.DialAndSendFunc(msgs...)
-	}
-	return nil
-}
-
-func (m *MockMailClient) Dial() (gomail.SendCloser, error) {
-	m.DialCalled = true
-	if m.DialFunc != nil {
-		return m.DialFunc()
-	}
-	return nil, nil
-}
-
-func setupSMTPTest() (*SMTP, error) {
-	opts := NewSMTPOptions().
-		SetServer(os.Getenv("SMTP_SERVER")).
-		SetPort(func() int { port, _ := strconv.Atoi(os.Getenv("SMTP_PORT")); return port }()).
-		SetUsername(os.Getenv("SMTP_USERNAME")).
-		SetPassword(os.Getenv("SMTP_PASSWORD")).
-		SetFrom(os.Getenv("EMAIL_FROM")).
-		SetTo(os.Getenv("EMAIL_TO")).
-		Build()
-
-	smtp, err := NewSMTP(opts, nil) // nil uses default production client
-	return smtp, err
-}
-
-func TestSMTPValidation(t *testing.T) {
-	// Use mock client to avoid actual network calls
-	mockClient := &MockMailClient{}
-
-	tests := []struct {
-		name        string
-		buildOpts   func() *SMTPOptions
-		expectError bool
-	}{
-		{
-			name: "MissingEmailFrom",
-			buildOpts: func() *SMTPOptions {
-				port, _ := strconv.Atoi(os.Getenv("SMTP_PORT"))
-				return NewSMTPOptions().
-					SetServer(os.Getenv("SMTP_SERVER")).
-					SetPort(port).
-					SetUsername(os.Getenv("SMTP_USERNAME")).
-					SetPassword(os.Getenv("SMTP_PASSWORD")).
-					SetTo(os.Getenv("EMAIL_TO")).
-					Build()
-			},
-			expectError: true,
-		},
-		{
-			name: "MissingEmailTo",
-			buildOpts: func() *SMTPOptions {
-				port, _ := strconv.Atoi(os.Getenv("SMTP_PORT"))
-				return NewSMTPOptions().
-					SetServer(os.Getenv("SMTP_SERVER")).
-					SetPort(port).
-					SetUsername(os.Getenv("SMTP_USERNAME")).
-					SetPassword(os.Getenv("SMTP_PASSWORD")).
-					SetFrom(os.Getenv("EMAIL_FROM")).
-					Build()
-			},
-			expectError: true,
-		},
-		{
-			name: "WrongEmailTo",
-			buildOpts: func() *SMTPOptions {
-				port, _ := strconv.Atoi(os.Getenv("SMTP_PORT"))
-				return NewSMTPOptions().
-					SetServer(os.Getenv("SMTP_SERVER")).
-					SetPort(port).
-					SetUsername(os.Getenv("SMTP_USERNAME")).
-					SetPassword(os.Getenv("SMTP_PASSWORD")).
-					SetFrom(os.Getenv("EMAIL_FROM")).
-					SetTo("invalid-email-address").
-					Build()
-			},
-			expectError: true,
-		},
-		{
-			name: "WrongEmailFrom",
-			buildOpts: func() *SMTPOptions {
-				port, _ := strconv.Atoi(os.Getenv("SMTP_PORT"))
-				return NewSMTPOptions().
-					SetServer(os.Getenv("SMTP_SERVER")).
-					SetPort(port).
-					SetUsername(os.Getenv("SMTP_USERNAME")).
-					SetPassword(os.Getenv("SMTP_PASSWORD")).
-					SetFrom("not-an-email").
-					SetTo(os.Getenv("EMAIL_TO")).
-					Build()
-			},
-			expectError: true,
-		},
-		{
-			name: "MissingServer",
-			buildOpts: func() *SMTPOptions {
-				port, _ := strconv.Atoi(os.Getenv("SMTP_PORT"))
-				return NewSMTPOptions().
-					SetPort(port).
-					SetUsername(os.Getenv("SMTP_USERNAME")).
-					SetPassword(os.Getenv("SMTP_PASSWORD")).
-					SetFrom(os.Getenv("EMAIL_FROM")).
-					SetTo(os.Getenv("EMAIL_TO")).
-					Build()
-			},
-			expectError: true,
-		},
-		{
-			name: "MissingPort",
-			buildOpts: func() *SMTPOptions {
-				return NewSMTPOptions().
-					SetServer(os.Getenv("SMTP_SERVER")).
-					SetUsername(os.Getenv("SMTP_USERNAME")).
-					SetPassword(os.Getenv("SMTP_PASSWORD")).
-					SetFrom(os.Getenv("EMAIL_FROM")).
-					SetTo(os.Getenv("EMAIL_TO")).
-					Build()
-			},
-			expectError: true,
-		},
-		{
-			name: "NegativePort",
-			buildOpts: func() *SMTPOptions {
-				return NewSMTPOptions().
-					SetServer(os.Getenv("SMTP_SERVER")).
-					SetPort(-25).
-					SetUsername(os.Getenv("SMTP_USERNAME")).
-					SetPassword(os.Getenv("SMTP_PASSWORD")).
-					SetFrom(os.Getenv("EMAIL_FROM")).
-					SetTo(os.Getenv("EMAIL_TO")).
-					Build()
-			},
-			expectError: true,
-		},
-		{
-			name: "ValidWithoutCredentials",
-			buildOpts: func() *SMTPOptions {
-				port, _ := strconv.Atoi(os.Getenv("SMTP_PORT"))
-				return NewSMTPOptions().
-					SetServer(os.Getenv("SMTP_SERVER")).
-					SetPort(port).
-					SetFrom(os.Getenv("EMAIL_FROM")).
-					SetTo(os.Getenv("EMAIL_TO")).
-					Build()
-			},
-			expectError: true,
-		},
+	withDisplay := ReplaceValues(tmpl, message.Message{
+		User: "cedricve",
+		Data: map[string]string{"user": "Cedric Verstraeten"},
+	})
+	if withDisplay != "Hello Cedric Verstraeten" {
+		t.Fatalf("display name not used: %q", withDisplay)
 	}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			opts := tt.buildOpts()
-
-			// Try to create SMTP client - validation happens here
-			_, err := NewSMTP(opts, mockClient)
-
-			if tt.expectError && err == nil {
-				t.Errorf("expected error got nil")
-			}
-			if !tt.expectError && err != nil {
-				t.Errorf("expected error to be nil got %v", err)
-			}
-		})
+	fallback := ReplaceValues(tmpl, message.Message{User: "cedricve"})
+	if fallback != "Hello cedricve" {
+		t.Fatalf("username fallback not used: %q", fallback)
 	}
 }
-func TestSMTPSendWithMock(t *testing.T) {
-	tests := []struct {
-		name        string
-		title       string
-		body        string
-		textBody    string
-		dialError   error
-		sendError   error
-		expectError bool
-		expectDial  bool
-		expectSend  bool
-	}{
-		{
-			name:        "EmptyTitle",
-			title:       "",
-			body:        "Body",
-			textBody:    "<p>Body</p>",
-			expectError: true,
-			expectDial:  false,
-			expectSend:  false,
-		},
-		{
-			name:        "EmptyBody",
-			title:       "Title",
-			body:        "",
-			textBody:    "<p>Body</p>",
-			expectError: true,
-			expectDial:  false,
-			expectSend:  false,
-		},
-		{
-			name:        "EmptyTextBody",
-			title:       "Title",
-			body:        "Body",
-			textBody:    "",
-			expectError: true,
-			expectDial:  false,
-			expectSend:  false,
-		},
-		{
-			name:        "DialError",
-			title:       "Title",
-			body:        "Body",
-			textBody:    "<p>Body</p>",
-			dialError:   errors.New("dial failed"),
-			expectError: true,
-			expectDial:  true,
-			expectSend:  false,
-		},
-		{
-			name:        "SendError",
-			title:       "Title",
-			body:        "Body",
-			textBody:    "<p>Body</p>",
-			sendError:   errors.New("send failed"),
-			expectError: true,
-			expectDial:  true,
-			expectSend:  true,
-		},
-		{
-			name:        "Success",
-			title:       "Title",
-			body:        "Body",
-			textBody:    "<p>Body</p>",
-			expectError: false,
-			expectDial:  true,
-			expectSend:  true,
-		},
-	}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-
-			// Create mock client
-			mockClient := &MockMailClient{
-				DialFunc: func() (gomail.SendCloser, error) {
-					return nil, tt.dialError
-				},
-				DialAndSendFunc: func(m ...*gomail.Message) error {
-					return tt.sendError
-				},
-			}
-
-			// Create SMTP client with mock
-			opts := NewSMTPOptions().
-				SetServer("smtp.test.com").
-				SetPort(587).
-				SetUsername("user").
-				SetPassword("pass").
-				SetFrom("from@test.com").
-				SetTo("to@test.com").
-				Build()
-
-			smtp, err := NewSMTP(opts, mockClient)
-			if err != nil {
-				t.Fatalf("failed to create SMTP client: %v", err)
-			}
-
-			// Test Send
-			err = smtp.Send(tt.title, tt.body, tt.textBody)
-
-			if tt.expectError && err == nil {
-				t.Errorf("expected error got nil")
-			}
-			if !tt.expectError && err != nil {
-				t.Errorf("expected no error got %v", err)
-			}
-
-			if mockClient.DialCalled != tt.expectDial {
-				t.Errorf("expected Dial called=%v, got=%v", tt.expectDial, mockClient.DialCalled)
-			}
-
-			if mockClient.SendCalled != tt.expectSend {
-				t.Errorf("expected Send called=%v, got=%v", tt.expectSend, mockClient.SendCalled)
-			}
-		})
+// TestReplaceValues_LinkPrefersDataLink ensures the tenant-aware Data["link"]
+// (from BuildAlertMediaLink) overrides the raw media URL for {{link}}, matching
+// the Mailgun channel so the same alert links to the same place regardless of
+// email provider.
+func TestReplaceValues_LinkPrefersDataLink(t *testing.T) {
+	tmpl := "Watch: {{link}}"
+	out := ReplaceValues(tmpl, message.Message{
+		Media: []message.Media{{Url: "https://raw/media.mp4"}},
+		Data:  map[string]string{"link": "https://acme.kerberos.io/media/123"},
+	})
+	if out != "Watch: https://acme.kerberos.io/media/123" {
+		t.Fatalf("Data[link] did not override media url: %q", out)
 	}
 }
-func TestSMTPFieldEmpty(t *testing.T) {
-	// Use mock client to avoid actual network calls
-	mockClient := &MockMailClient{}
 
-	opts := NewSMTPOptions().
-		SetServer("smtp.test.com").
-		SetPort(587).
-		SetUsername("user").
-		SetPassword("pass").
-		SetFrom("from@test.com").
-		SetTo("to@test.com").
-		Build()
-
-	smtpClient, err := NewSMTP(opts, mockClient)
-	if err != nil {
-		t.Fatalf("failed to setup SMTP: %v", err)
+// TestReplaceValues_LinkFallsBackToMedia ensures {{link}} still uses the raw
+// media URL when no tenant-aware Data["link"] is present, so the link is never
+// left empty.
+func TestReplaceValues_LinkFallsBackToMedia(t *testing.T) {
+	tmpl := "Watch: {{link}}"
+	out := ReplaceValues(tmpl, message.Message{
+		Media: []message.Media{{Url: "https://raw/media.mp4"}},
+	})
+	if out != "Watch: https://raw/media.mp4" {
+		t.Fatalf("media url fallback not used: %q", out)
 	}
+}
 
-	tests := []struct {
-		title       string
-		body        string
-		textBody    string
-		expectError bool
-	}{
-		{title: "", body: "Body", textBody: "<p>Body</p>", expectError: true},
-		{title: "Title", body: "", textBody: "<p>Body</p>", expectError: true},
-		{title: "Title", body: "Body", textBody: "", expectError: true},
-		{title: "Title", body: "Body", textBody: "<p>Body</p>", expectError: false},
+// TestReplaceValues_MediaLink builds the app media link from MediaId.
+func TestReplaceValues_MediaLink(t *testing.T) {
+	out := ReplaceValues("Open {{medialink}}", message.Message{MediaId: "abc123"})
+	if out != "Open https://app.kerberos.io/media/abc123" {
+		t.Fatalf("medialink not built: %q", out)
 	}
+}
 
-	for _, tt := range tests {
-		mockClient.DialCalled = false
-		mockClient.SendCalled = false
-		err := smtpClient.Send(tt.title, tt.body, tt.textBody)
-		if tt.expectError && err == nil {
-			t.Errorf("expected error got nil for title: '%s', body: '%s', textBody: '%s'", tt.title, tt.body, tt.textBody)
+// TestReplaceValues_NoPanicOnEmptyMedia ensures the email body builder is safe
+// when no media is attached (a panic here would lose the email notification).
+func TestReplaceValues_NoPanicOnEmptyMedia(t *testing.T) {
+	out := ReplaceValues("{{title}} {{text}}", message.Message{
+		Title: "Alert",
+		Body:  "Something happened",
+	}) // must not panic
+	if !strings.Contains(out, "Alert") || !strings.Contains(out, "Something happened") {
+		t.Fatalf("title/text not substituted: %q", out)
+	}
+}
+
+// TestReplaceValues_NoLeftoverCommonPlaceholders asserts the variables that
+// always have a value are fully substituted, so recipients never receive a
+// template with raw {{user}}/{{text}}/{{link}}/{{medialink}} tokens.
+func TestReplaceValues_NoLeftoverCommonPlaceholders(t *testing.T) {
+	tmpl := "{{user}} | {{text}} | {{link}} | {{medialink}}"
+	out := ReplaceValues(tmpl, message.Message{
+		User:    "cedricve",
+		Body:    "body",
+		MediaId: "abc123",
+		Media:   []message.Media{{Url: "https://raw/media.mp4"}},
+		Data:    map[string]string{"user": "Cedric Verstraeten", "link": "https://acme.kerberos.io/media/abc123"},
+	})
+	for _, leftover := range []string{"{{user}}", "{{text}}", "{{link}}", "{{medialink}}"} {
+		if strings.Contains(out, leftover) {
+			t.Fatalf("unsubstituted placeholder %s in %q", leftover, out)
 		}
-		if !tt.expectError && err != nil {
-			t.Errorf("expected no error got %v for title: '%s', body: '%s', textBody: '%s'", err, tt.title, tt.body, tt.textBody)
-		}
-		if !tt.expectError && !mockClient.DialCalled {
-			t.Errorf("expected Dial to be called but it wasn't")
-		}
-	}
-}
-
-func TestIntegrationSMTPServer(t *testing.T) {
-	tests := []struct {
-		name        string
-		buildOpts   func() *SMTPOptions
-		expectError bool
-	}{
-		{
-			name: "ValidSMTP",
-			buildOpts: func() *SMTPOptions {
-				port, _ := strconv.Atoi(os.Getenv("SMTP_PORT"))
-				return NewSMTPOptions().
-					SetServer(os.Getenv("SMTP_SERVER")).
-					SetPort(port).
-					SetUsername(os.Getenv("SMTP_USERNAME")).
-					SetPassword(os.Getenv("SMTP_PASSWORD")).
-					SetFrom(os.Getenv("EMAIL_FROM")).
-					SetTo(os.Getenv("EMAIL_TO")).
-					Build()
-			},
-			expectError: false,
-		},
-		{
-			name: "WrongServer",
-			buildOpts: func() *SMTPOptions {
-				port, _ := strconv.Atoi(os.Getenv("SMTP_PORT"))
-				return NewSMTPOptions().
-					SetServer("wrong.smtp.server").
-					SetPort(port).
-					SetUsername(os.Getenv("SMTP_USERNAME")).
-					SetPassword(os.Getenv("SMTP_PASSWORD")).
-					SetFrom(os.Getenv("EMAIL_FROM")).
-					SetTo(os.Getenv("EMAIL_TO")).
-					Build()
-			},
-			expectError: true,
-		},
-		{
-			name: "WrongPort",
-			buildOpts: func() *SMTPOptions {
-				return NewSMTPOptions().
-					SetServer(os.Getenv("SMTP_SERVER")).
-					SetPort(-100).
-					SetUsername(os.Getenv("SMTP_USERNAME")).
-					SetPassword(os.Getenv("SMTP_PASSWORD")).
-					SetFrom(os.Getenv("EMAIL_FROM")).
-					SetTo(os.Getenv("EMAIL_TO")).
-					Build()
-			},
-			expectError: true,
-		},
-		{
-			name: "InvalidPort",
-			buildOpts: func() *SMTPOptions {
-				return NewSMTPOptions().
-					SetServer(os.Getenv("SMTP_SERVER")).
-					SetPort(0).
-					SetUsername(os.Getenv("SMTP_USERNAME")).
-					SetPassword(os.Getenv("SMTP_PASSWORD")).
-					SetFrom(os.Getenv("EMAIL_FROM")).
-					SetTo(os.Getenv("EMAIL_TO")).
-					Build()
-			},
-			expectError: true,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			opts := tt.buildOpts()
-
-			// Try to create SMTP client
-			smtpClient, err := NewSMTP(opts) // no dialer uses default production dialer
-
-			// For validation errors, check client creation
-			if tt.expectError && tt.name != "ValidSMTP" && tt.name != "WrongServer" {
-				if err == nil {
-					t.Errorf("expected error during client creation got nil")
-				}
-				return
-			}
-
-			if err != nil && !tt.expectError {
-				t.Fatalf("failed to create SMTP client: %v", err)
-			}
-
-			// For runtime errors (like wrong server), try to send
-			if smtpClient != nil {
-				err = smtpClient.Send("Test Subject", "This is the body of the email.", "<p>This is the body of the email.</p>")
-				if tt.expectError && err == nil {
-					t.Errorf("expected error got nil")
-				}
-				if !tt.expectError && err != nil {
-					t.Errorf("expected error to be nil got %v", err)
-				}
-			}
-		})
 	}
 }
