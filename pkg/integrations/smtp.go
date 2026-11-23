@@ -1,187 +1,57 @@
 package integrations
 
 import (
+	"bytes"
 	"crypto/tls"
-	"errors"
+	"io"
+	"strconv"
+	"strings"
+	"time"
 
-	"github.com/go-playground/validator/v10"
+	"github.com/uug-ai/integrations/pkg/message"
+	"github.com/uug-ai/integrations/pkg/templates"
 	"gopkg.in/gomail.v2"
 )
 
-// MailClient is an interface for sending emails
-type MailClient interface {
-	DialAndSend(m ...*gomail.Message) error
-	Dial() (gomail.SendCloser, error)
-}
-
-// GomailClient wraps gomail.Dialer to implement MailClient interface
-type GomailClient struct {
-	dialer *gomail.Dialer
-}
-
-// NewGomailClient creates a new GomailClient with the provided SMTP settings
-func NewGomailClient(host string, port int, username, password string) MailClient {
-	d := gomail.NewDialer(host, port, username, password)
-	d.TLSConfig = &tls.Config{InsecureSkipVerify: true}
-	return &GomailClient{dialer: d}
-}
-
-// DialAndSend implements MailClient interface
-func (g *GomailClient) DialAndSend(m ...*gomail.Message) error {
-	return g.dialer.DialAndSend(m...)
-}
-
-// Dial implements MailClient interface
-func (g *GomailClient) Dial() (gomail.SendCloser, error) {
-	return g.dialer.Dial()
-}
-
-// SMTPOptions holds the configuration for SMTP
-type SMTPOptions struct {
-	Server    string `validate:"required"`
-	Port      int    `validate:"required,gt=0"`
-	Username  string `validate:"required"`
-	Password  string `validate:"required"`
-	EmailFrom string `validate:"required,email"`
-	EmailTo   string `validate:"required,email"`
-}
-
-// SMTPOptionsBuilder provides a fluent interface for building SMTP options
-type SMTPOptionsBuilder struct {
-	options *SMTPOptions
-}
-
-// SMTPOptions creates a new SMTP options builder
-func NewSMTPOptions() *SMTPOptionsBuilder {
-	return &SMTPOptionsBuilder{
-		options: &SMTPOptions{},
-	}
-}
-
-// SetServer sets the SMTP server hostname or IP address
-func (b *SMTPOptionsBuilder) SetServer(server string) *SMTPOptionsBuilder {
-	b.options.Server = server
-	return b
-}
-
-// SetPort sets the SMTP server port
-func (b *SMTPOptionsBuilder) SetPort(port int) *SMTPOptionsBuilder {
-	b.options.Port = port
-	return b
-}
-
-// SetUsername sets the SMTP authentication username
-func (b *SMTPOptionsBuilder) SetUsername(username string) *SMTPOptionsBuilder {
-	b.options.Username = username
-	return b
-}
-
-// SetPassword sets the SMTP authentication password
-func (b *SMTPOptionsBuilder) SetPassword(password string) *SMTPOptionsBuilder {
-	b.options.Password = password
-	return b
-}
-
-// SetFrom sets the sender email address
-func (b *SMTPOptionsBuilder) SetFrom(emailFrom string) *SMTPOptionsBuilder {
-	b.options.EmailFrom = emailFrom
-	return b
-}
-
-// SetTo sets the recipient email address
-func (b *SMTPOptionsBuilder) SetTo(emailTo string) *SMTPOptionsBuilder {
-	b.options.EmailTo = emailTo
-	return b
-}
-
-// Build returns the configured SMTPOptions
-func (b *SMTPOptionsBuilder) Build() *SMTPOptions {
-	return b.options
-}
-
-// SMTP represents an SMTP client instance
 type SMTP struct {
-	options *SMTPOptions
-	client  MailClient
+	Server     string `json:"server,omitempty"`
+	Port       string `json:"port,omitempty"`
+	Username   string `json:"username,omitempty"`
+	Password   string `json:"password,omitempty"`
+	EmailFrom  string `json:"email_from,omitempty"`
+	EmailTo    string `json:"email_to,omitempty"`
+	TemplateId string `json:"template_id,omitempty"`
 }
 
-// NewSMTP creates a new SMTP client with the provided options
-// If client is not provided, a default GomailClient will be created
-func NewSMTP(opts *SMTPOptions, client ...MailClient) (*SMTP, error) {
-	// Validate SMTP configuration
-	validate := validator.New()
-	err := validate.Struct(opts)
-	if err != nil {
-		return nil, err
-	}
+func (smtp SMTP) Send(message message.Message) error {
+	port, _ := strconv.Atoi(smtp.Port)
+	d := gomail.NewDialer(smtp.Server, port, smtp.Username, smtp.Password)
+	d.TLSConfig = &tls.Config{InsecureSkipVerify: true}
 
-	// If no client provided, create default production client
-	var c MailClient
-	if len(client) == 0 {
-		c = NewGomailClient(opts.Server, opts.Port, opts.Username, opts.Password)
-	} else {
-		c = client[0]
-	}
-
-	return &SMTP{
-		options: opts,
-		client:  c,
-	}, nil
-}
-
-// Send sends an email with the specified title, body (plain text), and textBody (HTML).
-// It validates that all parameters are non-empty, verifies connectivity to the SMTP server,
-// constructs an email message with the configured sender and recipient addresses, and sends it.
-//
-// Parameters:
-//   - title: The subject line of the email
-//   - body: The plain text content of the email
-//   - textBody: The HTML content of the email (added as an alternative format)
-//
-// Returns:
-//   - error: An error if title, body, or textBody is empty, if the SMTP server is unreachable,
-//     or if sending the email fails
-//
-// Note: The body parameter is set as plain text and textBody as HTML, which appears to be
-// reversed from the parameter names. Consider reviewing this implementation.
-func (s *SMTP) Send(title string, body string, textBody string) (err error) {
-
-	// Check if title and body are not empty
-	if title == "" {
-		return errors.New("empty title")
-	}
-	if body == "" {
-		return errors.New("empty body")
-	}
-	if textBody == "" {
-		return errors.New("empty text body")
-	}
-
-	// Check if we can dial to the server
-	_, err = s.client.Dial()
-	if err != nil {
-		return err
-	}
-
-	// Create the message
 	m := gomail.NewMessage()
-	m.SetHeader("From", s.options.EmailFrom)
-	m.SetHeader("To", s.options.EmailTo)
-	m.SetHeader("Subject", title)
+	m.SetHeader("From", smtp.EmailFrom)
+	m.SetHeader("To", smtp.EmailTo)
+	// Strip HTML tags (e.g. <br>) from title for the plain-text subject line.
+	subject := strings.ReplaceAll(message.Title, "<br>", " ")
+	m.SetHeader("Subject", subject)
+	timeNow := time.Now().Unix()
+	m.SetHeader("Message-Id", "<"+strconv.FormatInt(timeNow, 10)+"@uug.ai>")
 
-	// Replace needs to be moved outside and placed in the hub-pipeline-notification
-	//body := templates.GetTemplate(smtp.TemplateId)
-	//textBody := templates.GetTextTemplate(smtp.TemplateId)
-	// Replace variables in the template
-	//body = ReplaceValues(body, models.Message{})
-	//textBody = ReplaceValues(textBody, models.Message{})
+	textBody := templates.GetTextTemplate(smtp.TemplateId)
+	m.SetBody("text/plain", ReplaceValues(textBody, message))
 
-	m.SetBody("text/plain", body)
-	m.AddAlternative("text/html", textBody)
+	body := templates.GetTemplate(smtp.TemplateId)
+	m.AddAlternative("text/html", ReplaceValues(body, message))
 
-	// Send the email
-	err = s.client.DialAndSend(m)
-	return err
+	// Embed thumbnail as CID attachment so Gmail and other clients display it reliably.
+	if len(message.Thumbnail) > 0 {
+		m.Embed("thumbnail.png", gomail.SetCopyFunc(func(w io.Writer) error {
+			_, err := io.Copy(w, bytes.NewReader(message.Thumbnail))
+			return err
+		}))
+	}
+
+	return d.DialAndSend(m)
 }
 
 // This function will replace the variables in the email template. We have following variables available:
@@ -209,10 +79,15 @@ func (s *SMTP) Send(title string, body string, textBody string) (err error) {
 // - {{numberOfMedia}}: number of media attached to the message
 // - {{dataUsage}}: data usage of the message
 
-/*func ReplaceValues(body string, message models.Message) string {
+func ReplaceValues(body string, message message.Message) string {
 
 	body = strings.ReplaceAll(body, "{{tab1_title}}", "")
 	body = strings.ReplaceAll(body, "{{tab2_title}}", "")
+
+	// {{title}} this will inject the alert title into the header.
+	if message.Title != "" {
+		body = strings.ReplaceAll(body, "{{title}}", message.Title)
+	}
 
 	if message.NumberOfMedia != "" {
 		body = strings.ReplaceAll(body, "{{numberOfMedia}}", message.NumberOfMedia)
@@ -223,38 +98,49 @@ func (s *SMTP) Send(title string, body string, textBody string) (err error) {
 
 	// Add the variables to be used by the template
 	//body = strings.ReplaceAll(body, "{{user}}", "")
-	if message.User != "" {
-		body = strings.ReplaceAll(body, "{{user}}", message.User)
-	} else {
+	if message.Data["user"] != "" {
 		body = strings.ReplaceAll(body, "{{user}}", message.Data["user"])
+	} else {
+		body = strings.ReplaceAll(body, "{{user}}", message.User)
 	}
 
 	body = strings.ReplaceAll(body, "{{text}}", message.Body)
 
 	// {{link}} this will inject a link to the media (recording)
-	if len(message.Media) > 0 {
-		longUrl := message.Media[0].AtRuntimeMetadata.VideoUrl
-		body = strings.ReplaceAll(body, "{{link}}", longUrl)
-	}
+	// Data["link"] (the tenant-aware media link) takes precedence over the raw
+	// media URL, matching the Mailgun channel so the same alert links the same
+	// place regardless of email provider.
 	if message.Data["link"] != "" {
 		body = strings.ReplaceAll(body, "{{link}}", message.Data["link"])
+	} else if len(message.Media) > 0 {
+		longUrl := message.Media[0].Url
+		body = strings.ReplaceAll(body, "{{link}}", longUrl)
 	}
 
-	// {{thumbnail}} this will inject an image (either a base64 or a url).
-	if message.Thumbnail != "" {
-		body = strings.ReplaceAll(body, "{{thumbnail}}", "<img src='base64:"+message.Thumbnail+"' width='400px' height='auto' />")
-	} else if len(message.Media) > 0 && message.Media[0].AtRuntimeMetadata.ThumbnailUrl != "" {
-		body = strings.ReplaceAll(body, "{{thumbnail}}", "<img src='"+message.Media[0].AtRuntimeMetadata.ThumbnailUrl+"' width='400px' height='auto' />")
+	// {{medialink}} this will inject a link to the media page on app.kerberos.io
+	if message.MediaId != "" {
+		body = strings.ReplaceAll(body, "{{medialink}}", "https://app.kerberos.io/media/"+message.MediaId)
+	}
+
+	// {{thumbnail}} this will inject an image using CID embedding or a URL fallback.
+	if len(message.Thumbnail) > 0 {
+		body = strings.ReplaceAll(body, "{{thumbnail}}", "<img src='cid:thumbnail.png' width='100%' height='auto' />")
+	} else if len(message.Media) > 0 && message.Media[0].ThumbnailUrl != "" {
+		body = strings.ReplaceAll(body, "{{thumbnail}}", "<img src='"+message.Media[0].ThumbnailUrl+"' width='100%' height='auto' />")
 	}
 
 	// {{classifications}} this will inject a list of classifications detected in the recording.
 	if len(message.Classifications) > 0 {
-		body = strings.ReplaceAll(body, "{{classifications}}", strings.Join(message.Classifications, ", "))
+		classificationNames := []string{}
+		for _, classification := range message.Classifications {
+			classificationNames = append(classificationNames, classification.Key)
+		}
+		body = strings.ReplaceAll(body, "{{classifications}}", strings.Join(classificationNames, ", "))
 	}
 
 	// {{date}} {{time}} {{datetime}} of the start.
-	if len(message.Media) > 0 && message.Media[0].StartTimestamp > 0 {
-		t := time.Unix(message.Media[0].StartTimestamp, 0)
+	if len(message.Media) > 0 && message.Media[0].Timestamp > 0 {
+		t := time.Unix(message.Media[0].Timestamp, 0)
 		// Get time with timezone
 		if message.Timezone != "" {
 			loc, _ := time.LoadLocation(message.Timezone)
@@ -320,4 +206,4 @@ func (s *SMTP) Send(title string, body string, textBody string) (err error) {
 	}
 
 	return body
-}*/
+}

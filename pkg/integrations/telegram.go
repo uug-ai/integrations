@@ -3,8 +3,9 @@ package integrations
 import (
 	"strings"
 
-	"github.com/uug-ai/models/pkg/models"
 	tgbotapi "gopkg.in/telegram-bot-api.v4"
+
+	"github.com/uug-ai/integrations/pkg/message"
 )
 
 type Telegram struct {
@@ -12,7 +13,7 @@ type Telegram struct {
 	Channel string `json:"channel,omitempty"`
 }
 
-func (t Telegram) Send(message models.Message) bool {
+func (t Telegram) Send(message message.Message) bool {
 
 	channelName := t.Channel //"c1375189391_8694429167782276799"
 	token := t.Token         //"592498002:AAHYGK-EEUXV3oFtf3mVUJEPWxCYfNkXdC0"
@@ -38,7 +39,7 @@ func (t Telegram) Send(message models.Message) bool {
 	// Shorten url
 	url := ""
 	if len(message.Media) > 0 {
-		longUrl := message.Media[0].AtRuntimeMetadata.VideoUrl
+		longUrl := message.Media[0].Url
 		url = longUrl
 		//provider := "tinyurl"
 		//shortenedUrl, err := shorturl.Shorten(longUrl, provider)

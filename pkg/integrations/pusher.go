@@ -2,10 +2,26 @@ package integrations
 
 import (
 	"fmt"
+	"log"
+	"regexp"
 
 	push "github.com/pusher/pusher-http-go"
-	"github.com/uug-ai/models/pkg/models"
+	"github.com/uug-ai/integrations/pkg/message"
 )
+
+// pusherChannelPattern matches the characters Pusher allows in a channel name.
+// See https://pusher.com/docs/channels/using_channels/channels/#channel-naming-conventions
+var pusherChannelPattern = regexp.MustCompile(`^[a-zA-Z0-9_=@,.;-]+$`)
+
+// validPusherChannel reports whether recipient is usable as a Pusher channel
+// name. message.User is the ROUTING KEY here (it must equal the user's
+// username, which the frontend subscribes on) and NOT a display label. A
+// display name like "Cedric Verstraeten" contains a space and is rejected by
+// Pusher, which silently drops the browser notification. Guarding here turns
+// that silent failure into a logged error.
+func validPusherChannel(recipient string) bool {
+	return recipient != "" && pusherChannelPattern.MatchString(recipient)
+}
 
 // Following message is send to pusher, structure may be modified,
 // if this is required by the web interface.
@@ -45,28 +61,55 @@ type PusherMedia struct {
 	Type  string `json:"type,omitempty"`
 }
 
+// Pusher triggers an event on the recipient's Pusher channel. AppID, Key,
+// Secret and Cluster identify the Pusher app; Channel is the event name.
 type Pusher struct {
+	AppID   string `json:"app_id,omitempty"`
+	Key     string `json:"key,omitempty"`
+	Secret  string `json:"secret,omitempty"`
+	Cluster string `json:"cluster,omitempty"`
 	Channel string `json:"channel,omitempty"`
 }
 
-func (pusher Pusher) SendNotification(message models.Message) bool {
-
-	// instantiate a client
-	client := push.Client{
-		AppID:   "256802",
-		Key:     "dbfbe47444eddb7e21e5",
-		Secret:  "57e0315f3e4246225e62",
-		Cluster: "eu",
+func (pusher Pusher) client() push.Client {
+	return push.Client{
+		AppID:   pusher.AppID,
+		Key:     pusher.Key,
+		Secret:  pusher.Secret,
+		Cluster: pusher.Cluster,
 	}
+}
 
+// buildPusherPayload assembles the wrapper sent to Pusher. It is a pure
+// function (no network) so the payload mapping can be regression-tested, and it
+// guards against an empty Media slice — a missing guard there would panic and,
+// via the handler's recover, dead-letter the event (i.e. lose the in-app
+// notification entirely).
+func buildPusherPayload(message message.Message) PusherMessageWrapper {
 	pusherMessage := PusherMessageWrapper{}
 	pusherMessage.Sequence.Title = message.Title
 	pusherMessage.Sequence.Text = message.Body
 	pusherMessage.Sequence.Media = []PusherMedia{}
-	pusherMessage.Sequence.Media = append(pusherMessage.Sequence.Media, PusherMedia{
-		Title: fmt.Sprintf("%v", message.Media[0].StartTimestamp),
-		Media: message.Media[0].AtRuntimeMetadata.VideoUrl,
-	})
+	if len(message.Media) > 0 {
+		pusherMessage.Sequence.Media = append(pusherMessage.Sequence.Media, PusherMedia{
+			Title: fmt.Sprintf("%v", message.Media[0].Timestamp),
+			Type:  message.Media[0].Type,
+			Media: message.Media[0].Url,
+		})
+	}
+	return pusherMessage
+}
+
+func (pusher Pusher) SendNotification(message message.Message) bool {
+
+	if !validPusherChannel(message.User) {
+		log.Printf("pusher: invalid channel %q (must be the user's username, not a display name); dropping notification", message.User)
+		return false
+	}
+
+	client := pusher.client()
+
+	pusherMessage := buildPusherPayload(message)
 
 	// trigger an event on the users channel, along with a data payload.
 	client.Trigger(message.User, pusher.Channel, pusherMessage)
@@ -74,15 +117,24 @@ func (pusher Pusher) SendNotification(message models.Message) bool {
 	return true
 }
 
-func (pusher Pusher) Send(message models.Message) bool {
-
-	// instantiate a client
-	client := push.Client{
-		AppID:   "256802",
-		Key:     "dbfbe47444eddb7e21e5",
-		Secret:  "57e0315f3e4246225e62",
-		Cluster: "eu",
+// Trigger sends the message on the recipient's channel (message.User) and
+// reports why it was not delivered.
+func (pusher Pusher) Trigger(message message.Message) error {
+	if !validPusherChannel(message.User) {
+		return fmt.Errorf("pusher: invalid channel %q (must be the user's username, not a display name)", message.User)
 	}
+	client := pusher.client()
+	return client.Trigger(message.User, pusher.Channel, message)
+}
+
+func (pusher Pusher) Send(message message.Message) bool {
+
+	if !validPusherChannel(message.User) {
+		log.Printf("pusher: invalid channel %q (must be the user's username, not a display name); dropping notification", message.User)
+		return false
+	}
+
+	client := pusher.client()
 
 	// trigger an event on the users channel, along with a data payload.
 	client.Trigger(message.User, pusher.Channel, message)

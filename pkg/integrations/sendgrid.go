@@ -3,7 +3,7 @@ package integrations
 import (
 	sg "github.com/sendgrid/sendgrid-go"
 	mail "github.com/sendgrid/sendgrid-go/helpers/mail"
-	"github.com/uug-ai/models/pkg/models"
+	"github.com/uug-ai/integrations/pkg/message"
 )
 
 type Sendgrid struct {
@@ -14,7 +14,7 @@ type Sendgrid struct {
 	TemplateId       string `json:"templateId,omitempty"`
 }
 
-func (sendg Sendgrid) SendNotification(message models.Message) bool {
+func (sendg Sendgrid) SendNotification(message message.Message) bool {
 
 	from := mail.NewEmail(sendg.EmailFromDisplay, sendg.EmailFrom)
 	to := mail.NewEmail(message.User, message.Email)
@@ -24,7 +24,11 @@ func (sendg Sendgrid) SendNotification(message models.Message) bool {
 	subject := message.Title
 	content := mail.NewContent("text/html", "I'm replacing the <strong>body tag</strong>")
 	m := mail.NewV3MailInit(from, subject, to, content)
-	m.Personalizations[0].SetSubstitution("{{user}}", message.User)
+	displayUser := message.User
+	if message.Data["user"] != "" {
+		displayUser = message.Data["user"]
+	}
+	m.Personalizations[0].SetSubstitution("{{user}}", displayUser)
 	if message.NumberOfMedia != "" {
 		m.Personalizations[0].SetSubstitution("{{numberOfMedia}}", message.NumberOfMedia)
 	}
@@ -34,7 +38,7 @@ func (sendg Sendgrid) SendNotification(message models.Message) bool {
 	m.Personalizations[0].SetSubstitution("{{text}}", message.Body)
 
 	if len(message.Media) > 0 {
-		longUrl := message.Media[0].AtRuntimeMetadata.VideoUrl
+		longUrl := message.Media[0].Url
 		//provider := "tinyurl"
 		url := longUrl
 		/*provider := "tinyurl"

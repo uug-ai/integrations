@@ -1,11 +1,13 @@
 package integrations
 
 import (
+	"crypto/rand"
+	"encoding/hex"
 	"fmt"
 	"time"
 
 	mqttPaho "github.com/eclipse/paho.mqtt.golang"
-	"github.com/uug-ai/models/pkg/models"
+	"github.com/uug-ai/integrations/pkg/message"
 )
 
 type MQTT struct {
@@ -14,7 +16,16 @@ type MQTT struct {
 	Password string
 }
 
-func (mqtt MQTT) SendNotification(message models.Message) bool {
+func newMQTTClientID() (string, error) {
+	random := make([]byte, 4)
+	if _, err := rand.Read(random); err != nil {
+		return "", err
+	}
+
+	return "hub-pipe-notif-" + hex.EncodeToString(random), nil
+}
+
+func (mqtt MQTT) SendNotification(message message.Message) bool {
 
 	MQTTURI := mqtt.URI
 	MQTTUsername := mqtt.Username
@@ -25,6 +36,12 @@ func (mqtt MQTT) SendNotification(message models.Message) bool {
 	}
 
 	opts := mqttPaho.NewClientOptions()
+	clientID, err := newMQTTClientID()
+	if err != nil {
+		fmt.Println("Unable to generate MQTT client ID")
+		return false
+	}
+	opts.SetClientID(clientID)
 
 	// We will set the MQTT endpoint to which we want to connect
 	// and share and receive messages to/from.

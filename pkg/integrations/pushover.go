@@ -4,7 +4,7 @@ import (
 	"fmt"
 
 	pusho "github.com/gregdel/pushover"
-	"github.com/uug-ai/models/pkg/models"
+	"github.com/uug-ai/integrations/pkg/message"
 )
 
 type Pushover struct {
@@ -12,7 +12,8 @@ type Pushover struct {
 	SendTo string `json:"send_to,omitempty"`
 }
 
-func (pushover Pushover) Send(m models.Message) bool {
+func (pushover Pushover) Send(m message.Message) bool {
+
 	// Create a new pushover app with a token
 	app := pusho.New(pushover.ApiKey)
 

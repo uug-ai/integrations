@@ -1,124 +1,167 @@
 package integrations
 
 import (
+	"context"
 	"errors"
+	"fmt"
+	"io"
+	"log"
+	"net/http"
+	"net/url"
+	"os"
+	"time"
 
-	"github.com/go-playground/validator/v10"
 	"github.com/slack-go/slack"
+	"github.com/uug-ai/integrations/pkg/message"
+	"github.com/uug-ai/models/pkg/models"
 )
 
-// SlackWebhookClient is an interface for posting messages to Slack
-type SlackWebhookClient interface {
-	PostWebhook(url string, msg *slack.WebhookMessage) error
-}
+const slackMaxVideoBytes int64 = 1_000_000_000
 
-// SlackWebhookClientImpl is the default implementation using slack library
-type SlackWebhookClientImpl struct{}
+// slackSetupError is a Slack delivery that cannot succeed with this
+// configuration or recording, so retrying it does not help.
+type slackSetupError string
 
-// PostWebhook implements SlackWebhookClient interface
-func (s *SlackWebhookClientImpl) PostWebhook(url string, msg *slack.WebhookMessage) error {
-	return slack.PostWebhook(url, msg)
-}
+func (err slackSetupError) Error() string          { return string(err) }
+func (err slackSetupError) DeliveryRejected() bool { return true }
 
-// NewSlackWebhookClient creates a new default Slack webhook client
-func NewSlackWebhookClient() SlackWebhookClient {
-	return &SlackWebhookClientImpl{}
-}
-
-// SlackOptions holds the configuration for Slack
-type SlackOptions struct {
-	Hook     string `validate:"required,url"`
-	Username string `validate:"required"`
-}
-
-// SlackOptionsBuilder provides a fluent interface for building Slack options
-type SlackOptionsBuilder struct {
-	options *SlackOptions
-}
-
-// NewSlackOptions creates a new Slack options builder
-func NewSlackOptions() *SlackOptionsBuilder {
-	return &SlackOptionsBuilder{
-		options: &SlackOptions{},
-	}
-}
-
-// SetHook sets the Slack webhook URL
-func (b *SlackOptionsBuilder) SetHook(hook string) *SlackOptionsBuilder {
-	b.options.Hook = hook
-	return b
-}
-
-// SetUsername sets the Slack username
-func (b *SlackOptionsBuilder) SetUsername(username string) *SlackOptionsBuilder {
-	b.options.Username = username
-	return b
-}
-
-// Build returns the configured SlackOptions
-func (b *SlackOptionsBuilder) Build() *SlackOptions {
-	return b.options
-}
-
-// Slack represents a Slack client instance
 type Slack struct {
-	options *SlackOptions
-	client  SlackWebhookClient
+	DeliveryMode string `json:"deliveryMode,omitempty"`
+	Token        string `json:"token,omitempty"`
+	Channel      string `json:"channel,omitempty"`
+	Hook         string `json:"hook,omitempty"`
+	Username     string `json:"username,omitempty"`
 }
 
-// NewSlack creates a new Slack client with the provided options
-// If client is not provided, a default SlackWebhookClient will be created
-func NewSlack(opts *SlackOptions, client ...SlackWebhookClient) (*Slack, error) {
-	// Validate Slack configuration
-	validate := validator.New()
-	err := validate.Struct(opts)
-	if err != nil {
-		return nil, err
-	}
-
-	// If no client provided, create default production client
-	var c SlackWebhookClient
-	if len(client) == 0 {
-		c = NewSlackWebhookClient()
-	} else {
-		c = client[0]
-	}
-
-	return &Slack{
-		options: opts,
-		client:  c,
-	}, nil
+func (s Slack) Send(m message.Message) error {
+	return s.SendWithContext(context.Background(), m)
 }
 
-// Send sends a message to Slack using the configured webhook
-// Parameters:
-//   - body: The message text to send
-//   - url: An optional URL to append to the message and include as an image attachment
-//
-// Returns:
-//   - error: An error if body is empty or if posting to Slack fails
-func (s *Slack) Send(body string, url string) error {
-	if body == "" {
-		return errors.New("message body is empty")
-	}
+func (s Slack) SendWithContext(ctx context.Context, m message.Message) error {
+	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
+	defer cancel()
 
-	// Append URL to the message body if provided
-	text := body
-	if url != "" {
-		text = text + "\r\n" + url
-	}
+	client := &http.Client{Timeout: 30 * time.Second}
+	api := slack.New(s.Token, slack.OptionHTTPClient(client))
+	return s.send(ctx, m, client, api)
+}
 
-	// Create Slack webhook message
-	msg := &slack.WebhookMessage{
-		Username: s.options.Username,
-		Text:     text,
-		Attachments: []slack.Attachment{
-			{
+func (s Slack) send(ctx context.Context, m message.Message, client *http.Client, api *slack.Client) error {
+	text := m.Body
+	attachments := []slack.Attachment{}
+	if len(m.Media) > 0 {
+		if m.Media[0].Url != "" {
+			text += "\r\n" + m.Media[0].Url
+		}
+		if m.Media[0].ThumbnailUrl != "" {
+			attachments = append(attachments, slack.Attachment{
 				Color:    "good",
-				ImageURL: url,
-			},
-		},
+				ImageURL: m.Media[0].ThumbnailUrl,
+			})
+		}
 	}
 
-	return s.client.PostWebhook(s.options.Hook, msg)
+	mode, err := (models.Slack{
+		DeliveryMode: s.DeliveryMode, Apikey: s.Token, Channel: s.Channel,
+	}).ResolveDeliveryMode()
+	if err != nil {
+		return slackSetupError(err.Error())
+	}
+	if mode == models.SlackDeliveryModeBot {
+		if s.Token == "" || s.Channel == "" {
+			return slackSetupError("Slack bot delivery requires both a bot token and channel ID")
+		}
+		if len(m.Media) > 0 && m.Media[0].Type == "video" {
+			return s.uploadVideo(ctx, m, client, api)
+		}
+		_, _, err := api.PostMessageContext(ctx, s.Channel,
+			slack.MsgOptionText(text, false), slack.MsgOptionAttachments(attachments...))
+		return err
+	}
+
+	if s.Hook == "" {
+		return slackSetupError("Slack webhook delivery requires a webhook URL")
+	}
+	msg := slack.WebhookMessage{
+		Username:    s.Username,
+		Text:        text,
+		Attachments: attachments,
+	}
+	return slack.PostWebhookCustomHTTPContext(ctx, s.Hook, client, &msg)
+}
+
+func (s Slack) uploadVideo(ctx context.Context, m message.Message, client *http.Client, api *slack.Client) error {
+	request, err := http.NewRequestWithContext(ctx, http.MethodGet, m.Media[0].Url, nil)
+	if err != nil {
+		return slackSetupError("invalid Slack video download URL")
+	}
+	response, err := client.Do(request)
+	if err != nil {
+		var urlErr *url.Error
+		if errors.As(err, &urlErr) {
+			err = urlErr.Err
+		}
+		return fmt.Errorf("download Slack video: %w", err)
+	}
+	defer response.Body.Close()
+	if response.StatusCode != http.StatusOK {
+		return fmt.Errorf("download Slack video: %w", slack.StatusCodeError{
+			Code: response.StatusCode, Status: http.StatusText(response.StatusCode),
+		})
+	}
+	if response.ContentLength > slackMaxVideoBytes {
+		return slackSetupError("Slack video exceeds the 1 GB file limit")
+	}
+
+	// Slack requires the exact byte length before issuing an upload URL.
+	file, err := os.CreateTemp("", "hub-slack-video-*.mp4")
+	if err != nil {
+		return fmt.Errorf("create Slack video temporary file: %w", err)
+	}
+	defer func() {
+		if err := file.Close(); err != nil {
+			log.Printf("Slack video temporary file close failed: %v", err)
+		}
+		if err := os.Remove(file.Name()); err != nil {
+			log.Printf("Slack video temporary file cleanup failed: %v", err)
+		}
+	}()
+
+	size, err := copySlackVideo(file, response.Body)
+	if err != nil {
+		return err
+	}
+	if _, err := file.Seek(0, io.SeekStart); err != nil {
+		return fmt.Errorf("rewind Slack video: %w", err)
+	}
+	title := m.Title
+	if title == "" {
+		title = "Recording"
+	}
+	_, err = api.UploadFileContext(ctx, slack.UploadFileParameters{
+		Reader:         file,
+		FileSize:       int(size),
+		Filename:       "recording.mp4",
+		Title:          title,
+		InitialComment: m.Body,
+		Channel:        s.Channel,
+	})
+	if err != nil {
+		return fmt.Errorf("upload Slack video: %w", err)
+	}
+	return nil
+}
+
+func copySlackVideo(dst io.Writer, src io.Reader) (int64, error) {
+	size, err := io.Copy(dst, io.LimitReader(src, slackMaxVideoBytes+1))
+	if err != nil {
+		return 0, fmt.Errorf("read Slack video: %w", err)
+	}
+	if size == 0 {
+		return 0, slackSetupError("Slack video is empty")
+	}
+	if size > slackMaxVideoBytes {
+		return 0, slackSetupError("Slack video exceeds the 1 GB file limit")
+	}
+	return size, nil
 }

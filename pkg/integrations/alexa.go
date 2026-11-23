@@ -5,14 +5,14 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"github.com/uug-ai/models/pkg/models"
+	"github.com/uug-ai/integrations/pkg/message"
 )
 
 type Alexa struct {
 	AccessCode string `json:"accesscode,omitempty"`
 }
 
-func (alexa Alexa) Send(message models.Message) bool {
+func (alexa Alexa) Send(message message.Message) bool {
 
 	url := "https://api.notifymyecho.com/v1/NotifyMe"
 	notification := message.Body

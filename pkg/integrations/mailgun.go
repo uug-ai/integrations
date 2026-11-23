@@ -6,7 +6,7 @@ import (
 
 	//shorturl "github.com/subosito/shorturl"
 	mailgun "github.com/mailgun/mailgun-go/v4"
-	"github.com/uug-ai/models/pkg/models"
+	"github.com/uug-ai/integrations/pkg/message"
 )
 
 type Mail struct {
@@ -17,7 +17,7 @@ type Mail struct {
 	EmailFrom  string `json:"email_from,omitempty"`
 }
 
-func (mail Mail) Send(message models.Message) error {
+func (mail Mail) Send(message message.Message) error {
 
 	domain := mail.Domain
 	ApiKey := mail.ApiKey
@@ -50,7 +50,7 @@ func (mail Mail) Send(message models.Message) error {
 	msg.AddVariable("text", message.Body)
 
 	if len(message.Media) > 0 {
-		longUrl := message.Media[0].AtRuntimeMetadata.VideoUrl
+		longUrl := message.Media[0].Url
 		msg.AddVariable("link", longUrl)
 	}
 
