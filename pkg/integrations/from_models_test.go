@@ -48,7 +48,7 @@ func TestEmailFromEnvPicksProvider(t *testing.T) {
 	t.Setenv("SENDGRID_API_KEY", "sg-key")
 	t.Setenv("EMAIL_FROM_DISPLAYNAME", "Hub")
 
-	email, err := EmailFromEnv(EmailProviderSMTP, "to@example.com", "detection")
+	email, err := EmailFromEnv(EmailProviderSMTP, "to@example.com", "detection", Templates{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -57,7 +57,7 @@ func TestEmailFromEnvPicksProvider(t *testing.T) {
 		t.Errorf("smtp = %+v, want %+v", got, want)
 	}
 
-	email, err = EmailFromEnv(EmailProviderMailgun, "to@example.com", "detection")
+	email, err = EmailFromEnv(EmailProviderMailgun, "to@example.com", "detection", Templates{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -66,7 +66,7 @@ func TestEmailFromEnvPicksProvider(t *testing.T) {
 		t.Errorf("mailgun = %+v, want %+v", got, want)
 	}
 
-	email, err = EmailFromEnv(EmailProviderSendgrid, "to@example.com", "detection")
+	email, err = EmailFromEnv(EmailProviderSendgrid, "to@example.com", "detection", Templates{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -75,7 +75,7 @@ func TestEmailFromEnvPicksProvider(t *testing.T) {
 		t.Errorf("sendgrid = %+v, want %+v", got, want)
 	}
 
-	_, err = EmailFromEnv("postmark", "to@example.com", "detection")
+	_, err = EmailFromEnv("postmark", "to@example.com", "detection", Templates{})
 	var unsupported UnsupportedEmailProviderError
 	if !errors.As(err, &unsupported) || string(unsupported) != "postmark" {
 		t.Errorf("unknown provider error = %v", err)

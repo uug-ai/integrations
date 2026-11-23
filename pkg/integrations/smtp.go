@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"github.com/uug-ai/integrations/pkg/message"
-	"github.com/uug-ai/integrations/pkg/templates"
 	"gopkg.in/gomail.v2"
 )
 
@@ -21,6 +20,8 @@ type SMTP struct {
 	EmailFrom  string `json:"email_from,omitempty"`
 	EmailTo    string `json:"email_to,omitempty"`
 	TemplateId string `json:"template_id,omitempty"`
+	// Templates holds the email templates TemplateId names.
+	Templates Templates `json:"-"`
 }
 
 func (smtp SMTP) Send(message message.Message) error {
@@ -37,11 +38,9 @@ func (smtp SMTP) Send(message message.Message) error {
 	timeNow := time.Now().Unix()
 	m.SetHeader("Message-Id", "<"+strconv.FormatInt(timeNow, 10)+"@uug.ai>")
 
-	textBody := templates.GetTextTemplate(smtp.TemplateId)
-	m.SetBody("text/plain", ReplaceValues(textBody, message))
-
-	body := templates.GetTemplate(smtp.TemplateId)
-	m.AddAlternative("text/html", ReplaceValues(body, message))
+	template := smtp.Templates.Get(smtp.TemplateId)
+	m.SetBody("text/plain", ReplaceValues(template.Text, message))
+	m.AddAlternative("text/html", ReplaceValues(template.HTML, message))
 
 	// Embed thumbnail as CID attachment so Gmail and other clients display it reliably.
 	if len(message.Thumbnail) > 0 {

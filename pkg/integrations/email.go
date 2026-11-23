@@ -27,9 +27,10 @@ func (err UnsupportedEmailProviderError) Error() string {
 	return fmt.Sprintf("email provider %q is not supported", string(err))
 }
 
-// SMTPFromEnv builds an SMTP sender to emailTo with the given template, using
-// SMTP_SERVER, SMTP_PORT, SMTP_USERNAME, SMTP_PASSWORD and EMAIL_FROM.
-func SMTPFromEnv(emailTo, templateId string) SMTP {
+// SMTPFromEnv builds an SMTP sender to emailTo that renders the named template
+// from templates, using SMTP_SERVER, SMTP_PORT, SMTP_USERNAME, SMTP_PASSWORD
+// and EMAIL_FROM.
+func SMTPFromEnv(emailTo, templateId string, templates Templates) SMTP {
 	return SMTP{
 		Server:     os.Getenv("SMTP_SERVER"),
 		Port:       os.Getenv("SMTP_PORT"),
@@ -38,6 +39,7 @@ func SMTPFromEnv(emailTo, templateId string) SMTP {
 		EmailFrom:  os.Getenv("EMAIL_FROM"),
 		EmailTo:    emailTo,
 		TemplateId: templateId,
+		Templates:  templates,
 	}
 }
 
@@ -66,11 +68,13 @@ func SendgridFromEnv(emailTo, templateId string) Sendgrid {
 }
 
 // EmailFromEnv builds the sender for the named mail provider (smtp, mailgun or
-// sendgrid) from the environment, as the *FromEnv builders do.
-func EmailFromEnv(provider, emailTo, templateId string) (Email, error) {
+// sendgrid) from the environment, as the *FromEnv builders do. Only SMTP
+// renders templates; Mailgun and SendGrid use the template stored under
+// templateId at the provider.
+func EmailFromEnv(provider, emailTo, templateId string, templates Templates) (Email, error) {
 	switch provider {
 	case EmailProviderSMTP:
-		return SMTPFromEnv(emailTo, templateId), nil
+		return SMTPFromEnv(emailTo, templateId, templates), nil
 	case EmailProviderMailgun:
 		return MailgunFromEnv(emailTo, templateId), nil
 	case EmailProviderSendgrid:

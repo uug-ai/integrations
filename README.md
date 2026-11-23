@@ -18,8 +18,7 @@ go get github.com/uug-ai/integrations
 | Package | Contents |
 |---------|----------|
 | `pkg/message` | `Message`, the payload every channel sends, and `Media`. |
-| `pkg/integrations` | One sender per channel, builders from saved channels (`models.Channels`), and email providers configured from the environment. |
-| `pkg/templates` | Built-in email templates (HTML and plain text). A file in `/mail/templates/<name>.html` or `<name>.txt` replaces the built-in one. |
+| `pkg/integrations` | One sender per channel, builders from saved channels (`models.Channels`), email providers configured from the environment, and the SMTP template lookup. |
 
 ## Sending a message
 
@@ -68,14 +67,22 @@ Builders: `SlackFromModel`, `WebhookFromModel`, `TelegramFromModel`, `Pushbullet
 | mailgun | `MAILGUN_DOMAIN`, `MAILGUN_API_KEY`, `EMAIL_FROM` |
 | sendgrid | `SENDGRID_API_KEY`, `EMAIL_FROM`, `EMAIL_FROM_DISPLAYNAME` |
 
+SMTP renders the template named by `TemplateId` from its `Templates`. Variables such as `{{text}}`, `{{link}}`, `{{thumbnail}}`, `{{devicename}}` and every key of `Message.Data` are filled in (see `ReplaceValues`). Mailgun and SendGrid pass the same values to a template stored at the provider.
+
+The templates belong to the service that sends them. A service embeds its own `<name>.html` and `<name>.txt` files, and `NewTemplates` lets files in `/mail/templates` (`DefaultTemplateDir`) replace them one by one:
+
 ```go
-email, err := integrations.EmailFromEnv(os.Getenv("MAIL_PROVIDER"), "user@example.com", "detection")
+//go:embed templates/*.html templates/*.txt
+var files embed.FS
+
+builtin, _ := fs.Sub(files, "templates")
+templates := integrations.NewTemplates(builtin)
+
+email, err := integrations.EmailFromEnv(os.Getenv("MAIL_PROVIDER"), "user@example.com", "detection", templates)
 if err == nil {
     err = email.Send(m)
 }
 ```
-
-SMTP renders the template named by `TemplateId` from `pkg/templates`, filling variables such as `{{text}}`, `{{link}}`, `{{thumbnail}}`, `{{devicename}}` and every key of `Message.Data` (see `ReplaceValues`). Mailgun and SendGrid pass the same values to a template stored at the provider.
 
 ### Slack delivery modes
 
