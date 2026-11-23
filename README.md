@@ -96,7 +96,7 @@ Errors keep enough detail to decide whether a retry can succeed:
 
 ### Pusher
 
-`Pusher` needs the Pusher app credentials (`AppID`, `Key`, `Secret`, `Cluster`). It triggers the `Channel` event on the channel named after `Message.User`, which must be the recipient's username.
+`Pusher` needs the Pusher app credentials (`AppID`, `Key`, `Secret`, `Cluster`); `PusherFromEnv(event)` reads them from `PUSHER_APP_ID`, `PUSHER_KEY`, `PUSHER_SECRET` and `PUSHER_CLUSTER`. It triggers the `Channel` event on the channel named after `Message.User`, which must be the recipient's username. `Trigger` returns the delivery error; `Send` only reports whether the recipient was valid.
 
 ## Testing
 

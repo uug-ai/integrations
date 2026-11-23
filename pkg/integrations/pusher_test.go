@@ -78,3 +78,14 @@ func TestBuildPusherPayloadMapsMedia(t *testing.T) {
 		t.Fatalf("media not mapped correctly: %+v", m)
 	}
 }
+
+func TestPusherFromEnvReadsAppCredentials(t *testing.T) {
+	t.Setenv("PUSHER_APP_ID", "1")
+	t.Setenv("PUSHER_KEY", "key")
+	t.Setenv("PUSHER_SECRET", "secret")
+	t.Setenv("PUSHER_CLUSTER", "eu")
+	want := Pusher{AppID: "1", Key: "key", Secret: "secret", Cluster: "eu", Channel: "notification"}
+	if got := PusherFromEnv("notification"); got != want {
+		t.Fatalf("PusherFromEnv = %+v, want %+v", got, want)
+	}
+}

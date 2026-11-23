@@ -3,6 +3,7 @@ package integrations
 import (
 	"fmt"
 	"log"
+	"os"
 	"regexp"
 
 	push "github.com/pusher/pusher-http-go"
@@ -69,6 +70,18 @@ type Pusher struct {
 	Secret  string `json:"secret,omitempty"`
 	Cluster string `json:"cluster,omitempty"`
 	Channel string `json:"channel,omitempty"`
+}
+
+// PusherFromEnv builds a Pusher sender for the given event name, using
+// PUSHER_APP_ID, PUSHER_KEY, PUSHER_SECRET and PUSHER_CLUSTER.
+func PusherFromEnv(channel string) Pusher {
+	return Pusher{
+		AppID:   os.Getenv("PUSHER_APP_ID"),
+		Key:     os.Getenv("PUSHER_KEY"),
+		Secret:  os.Getenv("PUSHER_SECRET"),
+		Cluster: os.Getenv("PUSHER_CLUSTER"),
+		Channel: channel,
+	}
 }
 
 func (pusher Pusher) client() push.Client {
