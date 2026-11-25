@@ -3,7 +3,9 @@ package integrations
 import (
 	"crypto/rand"
 	"encoding/hex"
+	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	mqttPaho "github.com/eclipse/paho.mqtt.golang"
@@ -68,12 +70,65 @@ func NewMQTT(opts *MQTTOptions) (*MQTT, error) {
 }
 
 func newMQTTClientID() (string, error) {
+	return newMQTTClientIDWithPrefix("hub-pipe-notif-")
+}
+
+func newMQTTClientIDWithPrefix(prefix string) (string, error) {
 	random := make([]byte, 4)
 	if _, err := rand.Read(random); err != nil {
 		return "", err
 	}
 
-	return "hub-pipe-notif-" + hex.EncodeToString(random), nil
+	return prefix + hex.EncodeToString(random), nil
+}
+
+// mqttPublishTimeout bounds connecting and having a message acknowledged
+// in Publish.
+var mqttPublishTimeout = 10 * time.Second
+
+// Publish connects to the broker, publishes payload on topic with QoS 1
+// (not retained), waits for the broker to acknowledge it, and
+// disconnects. It returns an error when the broker cannot be reached or
+// does not acknowledge the message in time, so the caller can retry or
+// report it.
+func (mqtt *MQTT) Publish(topic string, payload []byte) error {
+	if strings.TrimSpace(topic) == "" {
+		return errors.New("mqtt: topic is empty")
+	}
+	clientID, err := newMQTTClientIDWithPrefix("hub-publish-")
+	if err != nil {
+		return fmt.Errorf("mqtt: client id: %w", err)
+	}
+	opts := mqttPaho.NewClientOptions()
+	opts.SetClientID(clientID)
+	opts.AddBroker(mqtt.options.URI)
+	if mqtt.options.Username != "" || mqtt.options.Password != "" {
+		opts.SetUsername(mqtt.options.Username)
+		opts.SetPassword(mqtt.options.Password)
+	}
+	opts.SetCleanSession(true)
+	opts.SetConnectRetry(false)
+	opts.SetAutoReconnect(false)
+	opts.SetConnectTimeout(mqttPublishTimeout)
+
+	client := mqttPaho.NewClient(opts)
+	connect := client.Connect()
+	if !connect.WaitTimeout(mqttPublishTimeout) {
+		return errors.New("mqtt: timed out connecting to the broker")
+	}
+	if err := connect.Error(); err != nil {
+		return fmt.Errorf("mqtt: connect: %w", err)
+	}
+	defer client.Disconnect(250)
+
+	sent := client.Publish(topic, 1, false, payload)
+	if !sent.WaitTimeout(mqttPublishTimeout) {
+		return errors.New("mqtt: timed out waiting for the broker to acknowledge the message")
+	}
+	if err := sent.Error(); err != nil {
+		return fmt.Errorf("mqtt: publish: %w", err)
+	}
+	return nil
 }
 
 func (mqtt *MQTT) SendNotification(message message.Message) bool {
