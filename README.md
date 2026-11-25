@@ -70,7 +70,7 @@ err = webhook.SendWithContext(ctx, m)
 | Alexa | `NewAlexaOptions()` | `NewAlexa` | `Send` |
 | IFTTT | `NewIftttOptions()` | `NewIfttt` | `Send` |
 | SMS (Twilio) | `NewSmsOptions()` | `NewSms` | `Send` |
-| MQTT | `NewMQTTOptions()` | `NewMQTT` | `SendNotification` |
+| MQTT | `NewMQTTOptions()` | `NewMQTT` | `Publish`, `SendNotification` |
 
 `OptionsError` reports `DeliveryRejected() true`, so a caller that classifies delivery errors treats bad options as a rejection, not something to retry.
 
@@ -136,6 +136,10 @@ Errors keep enough detail to decide whether a retry can succeed:
 ### Pusher
 
 `Pusher` needs the Pusher app credentials (`SetAppID`, `SetKey`, `SetSecret`, `SetCluster`); `PusherFromEnv(event)` reads them from `PUSHER_APP_ID`, `PUSHER_KEY`, `PUSHER_SECRET` and `PUSHER_CLUSTER`. It triggers the `Channel` event on the channel named after `Message.User`, which must be the recipient's username. `Trigger` returns the delivery error; `Send` only reports whether the recipient was valid.
+
+### MQTT
+
+`MQTT` needs the broker URI (`SetURI`, for example `tcp://mqtt.kerberos.io:1883`) and, when the broker asks for them, `SetUsername` and `SetPassword`. `Publish(topic, payload)` connects, publishes the payload on the topic with QoS 1 (not retained), waits up to 10 seconds for the broker to acknowledge it, and disconnects; it returns an error when the broker cannot be reached or does not acknowledge in time. `SendNotification` connects to the broker but does not publish the message.
 
 ## Testing
 
